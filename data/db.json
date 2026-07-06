@@ -1,35 +1,6 @@
 {
   "products": [
     {
-      "id": "prod-men-1425",
-      "nameEn": "Sajol",
-      "nameBn": "সজল",
-      "descriptionEn": "Test",
-      "descriptionBn": "্টেস্ট",
-      "category": "cat_men",
-      "costUSD": 2000,
-      "priceUSD": 2560,
-      "discountPercent": 10,
-      "images": [
-        "/images/logo.png"
-      ],
-      "sizes": [
-        "S",
-        "M",
-        "L"
-      ],
-      "colors": [
-        {
-          "nameEn": "Stealth Black",
-          "nameBn": "কালো",
-          "hex": "#000000"
-        }
-      ],
-      "rating": 5,
-      "reviewsCount": 0,
-      "stock": 50
-    },
-    {
       "id": "prod-hot-1",
       "nameEn": "Chic Woolen Knitted Cardigan",
       "nameBn": "চটকদার উলের বোনা কার্ডিগান",
@@ -432,6 +403,11 @@
       "timestamp": "2026-07-06T06:02:01.425Z",
       "action": "Product Created",
       "details": "Admin added product \"Sajol\" under category \"cat_men\" with stock 50."
+    },
+    {
+      "timestamp": "2026-07-06T06:19:52.795Z",
+      "action": "Product Deleted",
+      "details": "Admin deleted product \"Sajol\" (ID: prod-men-1425)."
     }
   ]
 }

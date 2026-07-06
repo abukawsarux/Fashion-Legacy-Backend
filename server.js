@@ -30,8 +30,13 @@ app.use(cors({
   credentials: true
 }));
 
-// Parse incoming request bodies as JSON
-app.use(express.json());
+// Parse incoming request bodies as JSON with custom size limit for base64 uploads
+app.use(express.json({ limit: "15mb" }));
+app.use(express.urlencoded({ limit: "15mb", extended: true }));
+
+// Serve static uploaded files
+const path = require("path");
+app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 
 // Log HTTP requests in development console
 app.use(morgan("dev"));

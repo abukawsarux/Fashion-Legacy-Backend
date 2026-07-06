@@ -128,4 +128,55 @@ router.delete("/:id", (req, res) => {
   });
 });
 
+// Upload an image file (Base64)
+router.post("/upload", (req, res) => {
+  const { image } = req.body;
+  if (!image) {
+    return res.status(400).json({ error: "No image content provided." });
+  }
+
+  // Expecting format like: "data:image/png;base64,iVBORw0KGgoAAA..."
+  const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+  if (!matches || matches.length !== 3) {
+    return res.status(400).json({ error: "Invalid base64 image format." });
+  }
+
+  const mimeType = matches[1]; // e.g. "image/png" or "image/jpeg"
+  const base64Data = matches[2];
+  const buffer = Buffer.from(base64Data, "base64");
+
+  // Determine file extension
+  let extension = "png";
+  if (mimeType === "image/jpeg" || mimeType === "image/jpg") {
+    extension = "jpg";
+  } else if (mimeType === "image/webp") {
+    extension = "webp";
+  } else if (mimeType === "image/gif") {
+    extension = "gif";
+  }
+
+  // Create upload folder if not exists
+  const fs = require("fs");
+  const path = require("path");
+  const uploadDir = path.join(__dirname, "../public/uploads");
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
+  const filename = `product-${Date.now()}.${extension}`;
+  const filepath = path.join(uploadDir, filename);
+
+  fs.writeFile(filepath, buffer, (err) => {
+    if (err) {
+      console.error("Failed to save uploaded file:", err);
+      return res.status(500).json({ error: "Failed to write file to disk." });
+    }
+    
+    // Return relative URL
+    res.status(200).json({
+      imageUrl: `/uploads/${filename}`
+    });
+  });
+});
+
 module.exports = router;
