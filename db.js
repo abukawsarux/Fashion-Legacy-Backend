@@ -93,12 +93,20 @@ async function connectMongo() {
   const uri = process.env.MONGODB_URI;
   if (!uri) {
     console.log("No MONGODB_URI found, using local JSON database file.");
+    useMongo = false;
     return;
   }
   
   try {
     console.log("Connecting to MongoDB Atlas...");
-    mongoClient = new MongoClient(uri);
+    // Optimal configuration for Serverless / Vercel execution (prevents Atlas connection pool exhaustion)
+    mongoClient = new MongoClient(uri, {
+      maxPoolSize: 2,
+      minPoolSize: 1,
+      connectTimeoutMS: 5000,
+      socketTimeoutMS: 30000,
+      serverSelectionTimeoutMS: 5000
+    });
     await mongoClient.connect();
     mongoDb = mongoClient.db("fashion_legacy_db");
     useMongo = true;
@@ -193,8 +201,13 @@ async function connectMongo() {
       console.log("Persisted updated default seed changes to MongoDB.");
     }
   } catch (err) {
-    console.error("Failed to connect to MongoDB, falling back to local file:", err);
-    useMongo = false;
+    console.error("Critical: Failed to connect to MongoDB Atlas:", err);
+    if (process.env.MONGODB_URI) {
+      useMongo = true; // Stick to Mongo and throw error to prevent silent local file fallback
+      throw err;
+    } else {
+      useMongo = false;
+    }
   }
 }
 

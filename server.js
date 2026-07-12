@@ -53,9 +53,6 @@ app.use(async (req, res, next) => {
   next();
 });
 
-// Database Auto-Initialization
-getDb();
-
 // Mount routers
 const authRouter = require("./routes/auth");
 const productsRouter = require("./routes/products");
