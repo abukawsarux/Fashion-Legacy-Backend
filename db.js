@@ -127,12 +127,6 @@ async function connectMongo() {
       if (existingCatIndex === -1) {
         cachedDbState.categories.push(defaultCat);
         updated = true;
-      } else {
-        const existing = cachedDbState.categories[existingCatIndex];
-        if (existing.nameEn !== defaultCat.nameEn || existing.nameBn !== defaultCat.nameBn || existing.image !== defaultCat.image) {
-          cachedDbState.categories[existingCatIndex] = { ...existing, ...defaultCat };
-          updated = true;
-        }
       }
     });
 
@@ -226,12 +220,6 @@ function getDb() {
       if (existingCatIndex === -1) {
         parsed.categories.push(defaultCat);
         updated = true;
-      } else {
-        const existing = parsed.categories[existingCatIndex];
-        if (existing.nameEn !== defaultCat.nameEn || existing.nameBn !== defaultCat.nameBn || existing.image !== defaultCat.image) {
-          parsed.categories[existingCatIndex] = { ...existing, ...defaultCat };
-          updated = true;
-        }
       }
     });
 
