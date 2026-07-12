@@ -1,4 +1,4 @@
-// db.js
+// db.js — Serverless-safe MongoDB storage using separate collections
 const fs = require("fs");
 const path = require("path");
 const { MongoClient } = require("mongodb");
@@ -6,15 +6,21 @@ const { MongoClient } = require("mongodb");
 let mongoClient = null;
 let mongoDb = null;
 let useMongo = false;
-let cachedDbState = null;
 
 const isVercel = process.env.VERCEL || process.env.NOW_BUILDER || process.env.NODE_ENV === "production";
 const dataDir = isVercel ? "/tmp" : path.join(__dirname, "data");
 const dbPath = path.join(dataDir, "db.json");
 
-// Default initial products (matching website and dashboard default categories and currency conversion logic)
-const DEFAULT_PRODUCTS = [];
-const DEFAULT_ORDERS = [];
+// ─── Default seed data ───────────────────────────────────────────────────────
+
+const DEFAULT_CATEGORIES = [
+  { id: "cat_hot",     nameEn: "Hot Sale",        nameBn: "হট সেল",                    image: "/images/categories/hot.png" },
+  { id: "cat_women",   nameEn: "Women's Fashion",  nameBn: "মহিলাদের ফ্যাশন",           image: "/images/categories/women.png" },
+  { id: "cat_men",     nameEn: "Men's Fashion",    nameBn: "পুরুষদের ফ্যাশন",           image: "/images/categories/men.png" },
+  { id: "cat_shoes",   nameEn: "Shoes",            nameBn: "জুতো",                      image: "/images/categories/shoes.png" },
+  { id: "cat_watches", nameEn: "Watches & Acc.",   nameBn: "ঘড়ি ও অ্যাক্সেসরিজ",      image: "/images/categories/watches.png" },
+  { id: "cat_kids",    nameEn: "Kids & Toys",      nameBn: "বাচ্চাদের খেলনা ও পোশাক",  image: "/images/categories/kids.png" }
+];
 
 const DEFAULT_TRAFFIC = [
   { date: "30 Jun", visitors: 420, pageViews: 1250, conversions: 12 },
@@ -33,251 +39,204 @@ const DEFAULT_USERS = [
     phone: "01779024048",
     address: "House 14, Road 5, Uttara Sector 4, Dhaka",
     avatar: "avatar_men",
-    password: "12345678" // Plain text password for simplicity in mock
+    password: "12345678"
   }
-];
-
-const DEFAULT_LOGS = [
-  {
-    timestamp: new Date().toISOString(),
-    action: "System Initialization",
-    details: "Backend server database seeded with default mock records."
-  }
-];
-
-const DEFAULT_CATEGORIES = [
-  { id: "cat_hot", nameEn: "Hot Sale", nameBn: "হট সেল", image: "/images/categories/hot.png" },
-  { id: "cat_women", nameEn: "Women's Fashion", nameBn: "মহিলাদের ফ্যাশন", image: "/images/categories/women.png" },
-  { id: "cat_men", nameEn: "Men's Fashion", nameBn: "পুরুষদের ফ্যাশন", image: "/images/categories/men.png" },
-  { id: "cat_shoes", nameEn: "Shoes", nameBn: "জুতো", image: "/images/categories/shoes.png" },
-  { id: "cat_watches", nameEn: "Watches & Acc.", nameBn: "ঘড়ি ও অ্যাক্সেসরিজ", image: "/images/categories/watches.png" },
-  { id: "cat_kids", nameEn: "Kids & Toys", nameBn: "বাচ্চাদের খেলনা ও পোশাক", image: "/images/categories/kids.png" }
 ];
 
 const DEFAULT_DB_STATE = {
   categories: DEFAULT_CATEGORIES,
-  products: DEFAULT_PRODUCTS,
-  orders: DEFAULT_ORDERS,
+  products: [],
+  orders: [],
   traffic: DEFAULT_TRAFFIC,
   users: DEFAULT_USERS,
-  logs: DEFAULT_LOGS
+  logs: [{ timestamp: new Date().toISOString(), action: "System Initialization", details: "Backend seeded." }],
+  flashSaleEnd: null,
+  settings: {}
 };
 
-// Check and initialize
-function initDb() {
-  try {
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
+// ─── MongoDB connection ───────────────────────────────────────────────────────
 
-    if (!fs.existsSync(dbPath)) {
-      const bundledDbPath = path.join(__dirname, "data/db.json");
-      if (isVercel && fs.existsSync(bundledDbPath)) {
-        fs.copyFileSync(bundledDbPath, dbPath);
-        console.log("Database initialized by copying bundled db.json to /tmp");
-      } else {
-        fs.writeFileSync(dbPath, JSON.stringify(DEFAULT_DB_STATE, null, 2), "utf8");
-        console.log("Database seeded successfully in:", dbPath);
-      }
-    }
-  } catch (error) {
-    console.error("Failed to initialize database", error);
-  }
-}
-
-// Connect to MongoDB Atlas (for live Vercel deployments)
 async function connectMongo() {
-  if (useMongo && mongoClient && mongoDb) {
-    return;
-  }
+  // Already connected
+  if (useMongo && mongoClient && mongoDb) return;
+
   const uri = process.env.MONGODB_URI;
   if (!uri) {
-    console.log("No MONGODB_URI found, using local JSON database file.");
+    console.log("No MONGODB_URI — using local JSON file.");
     useMongo = false;
     return;
   }
-  
+
   try {
     console.log("Connecting to MongoDB Atlas...");
-    // Optimal configuration for Serverless / Vercel execution (prevents Atlas connection pool exhaustion)
     mongoClient = new MongoClient(uri, {
-      maxPoolSize: 2,
+      maxPoolSize: 3,
       minPoolSize: 1,
-      connectTimeoutMS: 5000,
-      socketTimeoutMS: 30000,
-      serverSelectionTimeoutMS: 5000
+      connectTimeoutMS: 8000,
+      socketTimeoutMS: 45000,
+      serverSelectionTimeoutMS: 8000
     });
     await mongoClient.connect();
     mongoDb = mongoClient.db("fashion_legacy_db");
+    useMongo = true;
     console.log("Connected to MongoDB Atlas successfully!");
-    
-    // Load initial state — NEVER rewrite existing data on startup
-    const col = mongoDb.collection("state");
-    const doc = await col.findOne({ _id: "current_state" });
-    if (doc) {
-      delete doc._id;
-      // Deep-clone to prevent MongoDB driver internal buffer sharing
-      cachedDbState = JSON.parse(JSON.stringify(doc));
 
-      // Only ensure required top-level keys exist (safe, additive only)
-      if (!cachedDbState.categories) cachedDbState.categories = [];
-      if (!cachedDbState.products) cachedDbState.products = [];
-      if (!cachedDbState.orders) cachedDbState.orders = [];
-      if (!cachedDbState.traffic) cachedDbState.traffic = [];
-      if (!cachedDbState.users) cachedDbState.users = [];
-      if (!cachedDbState.logs) cachedDbState.logs = [];
+    // Seed each collection if empty (first-time only, never overwrites)
+    await seedCollectionIfEmpty("categories", DEFAULT_CATEGORIES);
+    await seedCollectionIfEmpty("traffic", DEFAULT_TRAFFIC);
+    await seedCollectionIfEmpty("users", DEFAULT_USERS);
+    // products, orders, logs start empty — only user adds them
 
-      useMongo = true;
-      console.log(`Loaded database state from MongoDB: ${cachedDbState.categories.length} categories, ${cachedDbState.products.length} products.`);
-    } else {
-      // First-time only: seed with defaults (document does not exist yet)
-      const seedState = JSON.parse(JSON.stringify(DEFAULT_DB_STATE));
-      await col.insertOne({ _id: "current_state", ...seedState });
-      cachedDbState = seedState;
-      useMongo = true;
-      console.log("First-time seed: inserted default database state to MongoDB.");
-    }
+    const catCount = await mongoDb.collection("categories").countDocuments();
+    const prodCount = await mongoDb.collection("products").countDocuments();
+    console.log(`DB ready: ${catCount} categories, ${prodCount} products.`);
   } catch (err) {
-    console.error("Critical: Failed to connect to MongoDB Atlas:", err);
+    console.error("Critical: MongoDB connection failed:", err);
     useMongo = false;
     throw err;
   }
 }
 
-// Read database
-function getDb() {
-  if (useMongo && cachedDbState) {
-    return cachedDbState;
-  }
-
-  initDb();
-  try {
-    const data = fs.readFileSync(dbPath, "utf8");
-    const parsed = JSON.parse(data);
-    
-    let updated = false;
-
-    // 1. Sync Categories default data
-    if (!parsed.categories) {
-      parsed.categories = [];
-    }
-    DEFAULT_CATEGORIES.forEach(defaultCat => {
-      const existingCatIndex = parsed.categories.findIndex(c => c.id === defaultCat.id);
-      if (existingCatIndex === -1) {
-        parsed.categories.push(defaultCat);
-        updated = true;
-      }
-    });
-
-    // 2. Sync Products default data
-    if (!parsed.products) {
-      parsed.products = [];
-    }
-    DEFAULT_PRODUCTS.forEach(defaultProd => {
-      const existingProdIndex = parsed.products.findIndex(p => p.id === defaultProd.id);
-      if (existingProdIndex === -1) {
-        parsed.products.push(defaultProd);
-        updated = true;
-      } else {
-        const existing = parsed.products[existingProdIndex];
-        let hasDiff = false;
-        const fieldsToSync = ["nameEn", "nameBn", "descriptionEn", "descriptionBn", "category", "costUSD", "priceUSD", "discountPercent"];
-        fieldsToSync.forEach(field => {
-          if (existing[field] !== defaultProd[field]) {
-            existing[field] = defaultProd[field];
-            hasDiff = true;
-          }
-        });
-        
-        // Sync arrays/objects
-        if (JSON.stringify(existing.images) !== JSON.stringify(defaultProd.images)) {
-          existing.images = defaultProd.images;
-          hasDiff = true;
-        }
-        if (JSON.stringify(existing.sizes) !== JSON.stringify(defaultProd.sizes)) {
-          existing.sizes = defaultProd.sizes;
-          hasDiff = true;
-        }
-        if (JSON.stringify(existing.colors) !== JSON.stringify(defaultProd.colors)) {
-          existing.colors = defaultProd.colors;
-          hasDiff = true;
-        }
-
-        if (hasDiff) {
-          parsed.products[existingProdIndex] = existing;
-          updated = true;
-        }
-      }
-    });
-
-    // 3. Sync Users default data
-    if (!parsed.users) {
-      parsed.users = [];
-    }
-    DEFAULT_USERS.forEach(defaultUser => {
-      const existingUserIndex = parsed.users.findIndex(u => u.email === defaultUser.email);
-      if (existingUserIndex === -1) {
-        parsed.users.push(defaultUser);
-        updated = true;
-      } else {
-        const existing = parsed.users[existingUserIndex];
-        let hasDiff = false;
-        const userFields = ["name", "phone", "address", "avatar", "password"];
-        userFields.forEach(field => {
-          if (existing[field] !== defaultUser[field]) {
-            existing[field] = defaultUser[field];
-            hasDiff = true;
-          }
-        });
-        if (hasDiff) {
-          parsed.users[existingUserIndex] = existing;
-          updated = true;
-        }
-      }
-    });
-
-    if (updated) {
-      saveDb(parsed);
-    }
-    return parsed;
-  } catch (error) {
-    console.error("Failed to read database file, returning default state", error);
-    return DEFAULT_DB_STATE;
+async function seedCollectionIfEmpty(name, defaults) {
+  const col = mongoDb.collection(name);
+  const count = await col.countDocuments();
+  if (count === 0) {
+    await col.insertMany(defaults.map(d => ({ ...d })));
+    console.log(`Seeded '${name}' with ${defaults.length} default records.`);
   }
 }
 
-// Atomic save database to prevent corrupt files
-async function saveDb(data) {
-  if (useMongo && mongoDb) {
-    try {
-      const col = mongoDb.collection("state");
-      // Deep-clone to capture an exact snapshot — prevents shallow-ref mutation bugs
-      const snapshot = JSON.parse(JSON.stringify(data));
-      await col.replaceOne({ _id: "current_state" }, snapshot, { upsert: true });
-      // Only update in-memory cache AFTER the write succeeds
-      cachedDbState = snapshot;
-      console.log("Database state successfully persisted to MongoDB.");
-      return true;
-    } catch (err) {
-      console.error("Failed to persist database state to MongoDB:", err);
-      return false;
-    }
-  }
+// ─── getDb — assembles a plain object from live MongoDB collections ──────────
 
+async function getDb() {
+  if (!useMongo || !mongoDb) {
+    return getDbLocal();
+  }
+  try {
+    const [categories, products, orders, traffic, users, logs] = await Promise.all([
+      mongoDb.collection("categories").find({}, { projection: { _id: 0 } }).toArray(),
+      mongoDb.collection("products").find({}, { projection: { _id: 0 } }).toArray(),
+      mongoDb.collection("orders").find({}, { projection: { _id: 0 } }).toArray(),
+      mongoDb.collection("traffic").find({}, { projection: { _id: 0 } }).toArray(),
+      mongoDb.collection("users").find({}, { projection: { _id: 0 } }).toArray(),
+      mongoDb.collection("logs").find({}, { projection: { _id: 0 } }).sort({ timestamp: -1 }).limit(100).toArray()
+    ]);
+    const meta = await mongoDb.collection("meta").findOne({ _id: "settings" });
+    return {
+      categories,
+      products,
+      orders,
+      traffic,
+      users,
+      logs,
+      flashSaleEnd: meta ? meta.flashSaleEnd : null,
+      settings: meta ? meta.settings : {}
+    };
+  } catch (err) {
+    console.error("getDb error:", err);
+    return getDbLocal();
+  }
+}
+
+// ─── saveDb — writes changed data back to the correct MongoDB collection ─────
+// `data` is the full state object (as returned by getDb).
+// We diff against existing collections and apply targeted updates.
+
+async function saveDb(data) {
+  if (!useMongo || !mongoDb) {
+    return saveDbLocal(data);
+  }
+  try {
+    const ops = [];
+
+    // categories — replace entire collection contents atomically
+    if (data.categories !== undefined) {
+      ops.push(replaceCollection("categories", data.categories));
+    }
+    // products — replace entire collection contents atomically
+    if (data.products !== undefined) {
+      ops.push(replaceCollection("products", data.products));
+    }
+    // orders
+    if (data.orders !== undefined) {
+      ops.push(replaceCollection("orders", data.orders));
+    }
+    // traffic
+    if (data.traffic !== undefined) {
+      ops.push(replaceCollection("traffic", data.traffic));
+    }
+    // users
+    if (data.users !== undefined) {
+      ops.push(replaceCollection("users", data.users));
+    }
+    // logs — just push new ones (don't rewrite all)
+    if (data.logs && data.logs.length > 0) {
+      const latestLog = data.logs[data.logs.length - 1];
+      ops.push(mongoDb.collection("logs").insertOne({ ...latestLog }));
+    }
+    // meta (flashSaleEnd, settings)
+    ops.push(mongoDb.collection("meta").updateOne(
+      { _id: "settings" },
+      { $set: { flashSaleEnd: data.flashSaleEnd || null, settings: data.settings || {} } },
+      { upsert: true }
+    ));
+
+    await Promise.all(ops);
+    console.log("saveDb: all collections updated successfully.");
+    return true;
+  } catch (err) {
+    console.error("saveDb error:", err);
+    return false;
+  }
+}
+
+async function replaceCollection(name, items) {
+  const col = mongoDb.collection(name);
+  // Drop all docs and reinsert — atomic per-collection
+  await col.deleteMany({});
+  if (items && items.length > 0) {
+    await col.insertMany(items.map(d => ({ ...d })));
+  }
+}
+
+// ─── Local JSON fallback (development only) ───────────────────────────────────
+
+function initDb() {
+  try {
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    if (!fs.existsSync(dbPath)) {
+      const bundledDbPath = path.join(__dirname, "data/db.json");
+      if (isVercel && fs.existsSync(bundledDbPath)) {
+        fs.copyFileSync(bundledDbPath, dbPath);
+      } else {
+        fs.writeFileSync(dbPath, JSON.stringify(DEFAULT_DB_STATE, null, 2), "utf8");
+      }
+    }
+  } catch (err) {
+    console.error("initDb error:", err);
+  }
+}
+
+function getDbLocal() {
+  initDb();
+  try {
+    return JSON.parse(fs.readFileSync(dbPath, "utf8"));
+  } catch (err) {
+    return JSON.parse(JSON.stringify(DEFAULT_DB_STATE));
+  }
+}
+
+function saveDbLocal(data) {
   try {
     initDb();
     const tempPath = `${dbPath}.tmp`;
     fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), "utf8");
     fs.renameSync(tempPath, dbPath);
     return true;
-  } catch (error) {
-    console.error("Failed to save database file atomically", error);
+  } catch (err) {
+    console.error("saveDbLocal error:", err);
     return false;
   }
 }
 
-module.exports = {
-  connectMongo,
-  getDb,
-  saveDb
-};
+module.exports = { connectMongo, getDb, saveDb };

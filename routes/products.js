@@ -4,30 +4,28 @@ const router = express.Router();
 const { getDb, saveDb } = require("../db");
 
 // Get all products
-router.get("/", (req, res) => {
-  const db = getDb();
+router.get("/", async (req, res) => {
+  const db = await getDb();
   res.status(200).json(db.products);
 });
 
 // Get a single product
-router.get("/:id", (req, res) => {
-  const db = getDb();
+router.get("/:id", async (req, res) => {
+  const db = await getDb();
   const product = db.products.find(p => p.id === req.params.id);
-  if (!product) {
-    return res.status(404).json({ error: "Product not found." });
-  }
+  if (!product) return res.status(404).json({ error: "Product not found." });
   res.status(200).json(product);
 });
 
 // Create a new product
 router.post("/", async (req, res) => {
   const { nameEn, nameBn, descriptionEn, descriptionBn, category, costUSD, priceUSD, discountPercent, images, sizes, colors, stock } = req.body;
-  
+
   if (!nameEn || !nameBn || !category || (Array.isArray(category) && category.length === 0) || costUSD === undefined || priceUSD === undefined || stock === undefined) {
     return res.status(400).json({ error: "Missing required fields (nameEn, nameBn, category, costUSD, priceUSD, stock)." });
   }
 
-  const db = getDb();
+  const db = await getDb();
   const primaryCat = Array.isArray(category) ? category[0] : category;
   const newProduct = {
     id: `prod-${primaryCat.split("_")[1] || "gen"}-${Date.now().toString().slice(-4)}`,
@@ -47,34 +45,23 @@ router.post("/", async (req, res) => {
     stock: parseInt(stock) || 0
   };
 
-  db.products.unshift(newProduct); // Prepend to show up first in CRUD list
-  
-  db.logs.push({
-    timestamp: new Date().toISOString(),
-    action: "Product Created",
-    details: `Admin added product "${newProduct.nameEn}" under category "${Array.isArray(category) ? category.join(", ") : category}" with stock ${stock}.`
-  });
+  db.products.unshift(newProduct);
+  db.logs.push({ timestamp: new Date().toISOString(), action: "Product Created", details: `Admin added product "${newProduct.nameEn}" under category "${Array.isArray(category) ? category.join(", ") : category}" with stock ${stock}.` });
 
-  await saveDb(db);
+  const saved = await saveDb(db);
+  if (!saved) return res.status(500).json({ error: "Failed to save product to database." });
 
-  res.status(201).json({
-    message: "Product created successfully",
-    product: newProduct
-  });
+  res.status(201).json({ message: "Product created successfully", product: newProduct });
 });
 
 // Update a product
 router.put("/:id", async (req, res) => {
-  const db = getDb();
+  const db = await getDb();
   const productIndex = db.products.findIndex(p => p.id === req.params.id);
-  if (productIndex === -1) {
-    return res.status(404).json({ error: "Product not found." });
-  }
+  if (productIndex === -1) return res.status(404).json({ error: "Product not found." });
 
   const product = db.products[productIndex];
   const updates = req.body;
-
-  // Apply updates selectively
   if (updates.nameEn !== undefined) product.nameEn = updates.nameEn.trim();
   if (updates.nameBn !== undefined) product.nameBn = updates.nameBn.trim();
   if (updates.descriptionEn !== undefined) product.descriptionEn = updates.descriptionEn.trim();
@@ -89,96 +76,59 @@ router.put("/:id", async (req, res) => {
   if (updates.stock !== undefined) product.stock = parseInt(updates.stock) || 0;
 
   db.products[productIndex] = product;
+  db.logs.push({ timestamp: new Date().toISOString(), action: "Product Updated", details: `Admin updated product "${product.nameEn}" (ID: ${product.id}).` });
 
-  db.logs.push({
-    timestamp: new Date().toISOString(),
-    action: "Product Updated",
-    details: `Admin updated product attributes for "${product.nameEn}" (ID: ${product.id}).`
-  });
+  const saved = await saveDb(db);
+  if (!saved) return res.status(500).json({ error: "Failed to save product to database." });
 
-  await saveDb(db);
-
-  res.status(200).json({
-    message: "Product updated successfully",
-    product
-  });
+  res.status(200).json({ message: "Product updated successfully", product });
 });
 
 // Delete a product
 router.delete("/:id", async (req, res) => {
-  const db = getDb();
+  const db = await getDb();
   const productIndex = db.products.findIndex(p => p.id === req.params.id);
-  if (productIndex === -1) {
-    return res.status(404).json({ error: "Product not found." });
-  }
+  if (productIndex === -1) return res.status(404).json({ error: "Product not found." });
 
   const deletedProduct = db.products[productIndex];
   db.products.splice(productIndex, 1);
+  db.logs.push({ timestamp: new Date().toISOString(), action: "Product Deleted", details: `Admin deleted product "${deletedProduct.nameEn}" (ID: ${deletedProduct.id}).` });
 
-  db.logs.push({
-    timestamp: new Date().toISOString(),
-    action: "Product Deleted",
-    details: `Admin deleted product "${deletedProduct.nameEn}" (ID: ${deletedProduct.id}).`
-  });
+  const saved = await saveDb(db);
+  if (!saved) return res.status(500).json({ error: "Failed to save changes to database." });
 
-  await saveDb(db);
-
-  res.status(200).json({
-    message: "Product deleted successfully",
-    id: req.params.id
-  });
+  res.status(200).json({ message: "Product deleted successfully", id: req.params.id });
 });
 
 // Upload an image file (Base64)
 router.post("/upload", (req, res) => {
   const { image } = req.body;
-  if (!image) {
-    return res.status(400).json({ error: "No image content provided." });
-  }
+  if (!image) return res.status(400).json({ error: "No image content provided." });
 
-  // Expecting format like: "data:image/png;base64,iVBORw0KGgoAAA..."
   const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-  if (!matches || matches.length !== 3) {
-    return res.status(400).json({ error: "Invalid base64 image format." });
-  }
+  if (!matches || matches.length !== 3) return res.status(400).json({ error: "Invalid base64 image format." });
 
-  const mimeType = matches[1]; // e.g. "image/png" or "image/jpeg"
+  const mimeType = matches[1];
   const base64Data = matches[2];
   const buffer = Buffer.from(base64Data, "base64");
 
-  // Determine file extension
   let extension = "png";
-  if (mimeType === "image/jpeg" || mimeType === "image/jpg") {
-    extension = "jpg";
-  } else if (mimeType === "image/webp") {
-    extension = "webp";
-  } else if (mimeType === "image/gif") {
-    extension = "gif";
-  }
+  if (mimeType === "image/jpeg" || mimeType === "image/jpg") extension = "jpg";
+  else if (mimeType === "image/webp") extension = "webp";
+  else if (mimeType === "image/gif") extension = "gif";
 
-  // Create upload folder if not exists
   const fs = require("fs");
   const path = require("path");
   const uploadDir = path.join(__dirname, "../public/uploads");
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
+  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
   const filename = `product-${Date.now()}.${extension}`;
-  const filepath = path.join(uploadDir, filename);
-
-  fs.writeFile(filepath, buffer, (err) => {
+  fs.writeFile(path.join(uploadDir, filename), buffer, (err) => {
     if (err) {
-      console.warn("Failed to save uploaded file to disk, falling back to base64 string:", err);
-      return res.status(200).json({
-        imageUrl: image
-      });
+      console.warn("Failed to save uploaded file to disk:", err);
+      return res.status(200).json({ imageUrl: image });
     }
-    
-    // Return relative URL
-    res.status(200).json({
-      imageUrl: `/uploads/${filename}`
-    });
+    res.status(200).json({ imageUrl: `/uploads/${filename}` });
   });
 });
 

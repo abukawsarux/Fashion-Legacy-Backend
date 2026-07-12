@@ -4,7 +4,7 @@ const cors = require("cors");
 const morgan = require("morgan");
 require("dotenv").config();
 
-const { getDb, connectMongo } = require("./db");
+const { getDb, saveDb, connectMongo } = require("./db");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -72,8 +72,8 @@ app.use("/api/analytics", analyticsRouter);
 app.use("/api/categories", categoriesRouter);
 
 // Flash Sale Countdown API endpoints
-app.get("/api/flash-sale", (req, res) => {
-  const db = getDb();
+app.get("/api/flash-sale", async (req, res) => {
+  const db = await getDb();
   res.status(200).json({ flashSaleEnd: db.flashSaleEnd || new Date(Date.now() + 86400000).toISOString() });
 });
 
@@ -82,7 +82,7 @@ app.post("/api/flash-sale", async (req, res) => {
   if (!flashSaleEnd) {
     return res.status(400).json({ error: "Missing flashSaleEnd timestamp." });
   }
-  const db = getDb();
+  const db = await getDb();
   db.flashSaleEnd = flashSaleEnd;
   await saveDb(db);
   res.status(200).json({ message: "Flash sale countdown updated successfully", flashSaleEnd });
