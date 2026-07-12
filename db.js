@@ -116,7 +116,8 @@ async function connectMongo() {
     const doc = await col.findOne({ _id: "current_state" });
     if (doc) {
       delete doc._id;
-      cachedDbState = doc;
+      // Deep-clone to prevent MongoDB driver internal buffer sharing
+      cachedDbState = JSON.parse(JSON.stringify(doc));
       useMongo = true;
       console.log("Loaded database state from MongoDB.");
     } else {
@@ -313,10 +314,13 @@ function getDb() {
 // Atomic save database to prevent corrupt files
 async function saveDb(data) {
   if (useMongo && mongoDb) {
-    cachedDbState = data;
     try {
       const col = mongoDb.collection("state");
-      await col.replaceOne({ _id: "current_state" }, { ...data }, { upsert: true });
+      // Deep-clone to capture an exact snapshot — prevents shallow-ref mutation bugs
+      const snapshot = JSON.parse(JSON.stringify(data));
+      await col.replaceOne({ _id: "current_state" }, snapshot, { upsert: true });
+      // Only update in-memory cache AFTER the write succeeds
+      cachedDbState = snapshot;
       console.log("Database state successfully persisted to MongoDB.");
       return true;
     } catch (err) {
