@@ -18,7 +18,7 @@ router.get("/user/:email", (req, res) => {
 });
 
 // Place order (checkout)
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   const { customerName, customerEmail, customerAddress, items, paymentMethod, shippingArea } = req.body;
 
   if (!customerName || !customerEmail || !customerAddress || !items || items.length === 0) {
@@ -110,7 +110,7 @@ router.post("/", (req, res) => {
     details: `Customer ${newOrder.customerName} placed order ${newOrder.id} for ৳${newOrder.totalUSD.toFixed(2)}.`
   });
 
-  saveDb(db);
+  await saveDb(db);
 
   res.status(201).json({
     message: "Order placed successfully",
@@ -119,7 +119,7 @@ router.post("/", (req, res) => {
 });
 
 // Update order status (Pending -> Shipped -> Delivered)
-router.put("/:id/status", (req, res) => {
+router.put("/:id/status", async (req, res) => {
   const { status } = req.body;
   if (!status || !["Pending", "Shipped", "Delivered"].includes(status)) {
     return res.status(400).json({ error: "Invalid status state. Must be 'Pending', 'Shipped', or 'Delivered'." });
@@ -141,7 +141,7 @@ router.put("/:id/status", (req, res) => {
     details: `Order ${req.params.id} state updated from ${oldStatus} to ${status}.`
   });
 
-  saveDb(db);
+  await saveDb(db);
 
   res.status(200).json({
     message: "Order status updated successfully",

@@ -77,7 +77,7 @@ router.get("/stats", (req, res) => {
 });
 
 // Trigger a mock storefront purchase simulation
-router.post("/simulate", (req, res) => {
+router.post("/simulate", async (req, res) => {
   const db = getDb();
   if (db.products.length === 0) {
     return res.status(400).json({ error: "Cannot simulate purchase. Product catalog is empty." });
@@ -155,7 +155,7 @@ router.post("/simulate", (req, res) => {
     details: `Customer simulation: ${randomName} purchased ${quantity}x "${randomProduct.nameEn}".`
   });
 
-  saveDb(db);
+  await saveDb(db);
 
   res.status(201).json({
     message: "Purchase simulated successfully",

@@ -4,7 +4,7 @@ const router = express.Router();
 const { getDb, saveDb } = require("../db");
 
 // User Registration (Signup)
-router.post("/register", (req, res) => {
+router.post("/register", async (req, res) => {
   const { name, email, phone } = req.body;
   if (!name || !email || !phone) {
     return res.status(400).json({ error: "Missing required fields (name, email, phone)." });
@@ -35,7 +35,7 @@ router.post("/register", (req, res) => {
     details: `Customer ${newUser.name} (${newUser.email}) registered a new account.`
   });
 
-  saveDb(db);
+  await saveDb(db);
 
   res.status(201).json({
     message: "Registration successful",
@@ -50,7 +50,7 @@ router.post("/register", (req, res) => {
 });
 
 // User Login
-router.post("/login", (req, res) => {
+router.post("/login", async (req, res) => {
   const { email, password } = req.body;
   if (!email) {
     return res.status(400).json({ error: "Email is required." });
@@ -77,7 +77,7 @@ router.post("/login", (req, res) => {
       details: `Sandbox auto-created customer profile for ${user.name} (${user.email}).`
     });
 
-    saveDb(db);
+    await saveDb(db);
   }
 
   res.status(200).json({
@@ -93,7 +93,7 @@ router.post("/login", (req, res) => {
 });
 
 // Update User Profile
-router.post("/profile", (req, res) => {
+router.post("/profile", async (req, res) => {
   const { email, name, phone, address, avatar } = req.body;
   if (!email) {
     return res.status(400).json({ error: "User email is required to update profile." });
@@ -119,7 +119,7 @@ router.post("/profile", (req, res) => {
     details: `Customer ${db.users[userIndex].name} (${email}) updated profile details.`
   });
 
-  saveDb(db);
+  await saveDb(db);
 
   res.status(200).json({
     message: "Profile updated successfully",
@@ -134,7 +134,7 @@ router.post("/profile", (req, res) => {
 });
 
 // Admin Authentication Login (Dashboard)
-router.post("/admin/login", (req, res) => {
+router.post("/admin/login", async (req, res) => {
   const { password } = req.body;
   if (!password) {
     return res.status(400).json({ error: "Password is required." });
@@ -160,7 +160,7 @@ router.post("/admin/login", (req, res) => {
       details: `Admin session unlocked successfully by ${name} (${email}).`
     });
 
-    saveDb(db);
+    await saveDb(db);
 
     return res.status(200).json({
       success: true,

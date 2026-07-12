@@ -52,7 +52,7 @@ router.get("/", (req, res) => {
 });
 
 // Create a category
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   const { nameEn, nameBn, image } = req.body;
 
   if (!nameEn || !nameBn) {
@@ -98,7 +98,7 @@ router.post("/", (req, res) => {
     details: `Admin added category "${newCategory.nameEn}" (ID: ${newCategory.id}).`
   });
 
-  saveDb(db);
+  await saveDb(db);
 
   res.status(201).json({
     message: "Category created successfully",
@@ -107,7 +107,7 @@ router.post("/", (req, res) => {
 });
 
 // Update category
-router.put("/:id", (req, res) => {
+router.put("/:id", async (req, res) => {
   const db = getDb();
   const catIndex = db.categories.findIndex(c => c.id === req.params.id);
 
@@ -138,7 +138,7 @@ router.put("/:id", (req, res) => {
     details: `Admin updated category details for "${category.nameEn}" (ID: ${category.id}).`
   });
 
-  saveDb(db);
+  await saveDb(db);
 
   res.status(200).json({
     message: "Category updated successfully",
@@ -147,7 +147,7 @@ router.put("/:id", (req, res) => {
 });
 
 // Delete category
-router.delete("/:id", (req, res) => {
+router.delete("/:id", async (req, res) => {
   const db = getDb();
   const catIndex = db.categories.findIndex(c => c.id === req.params.id);
 
@@ -164,7 +164,7 @@ router.delete("/:id", (req, res) => {
     details: `Admin deleted category "${deletedCat.nameEn}" (ID: ${deletedCat.id}).`
   });
 
-  saveDb(db);
+  await saveDb(db);
 
   res.status(200).json({
     message: "Category deleted successfully",

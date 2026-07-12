@@ -313,18 +313,18 @@ function getDb() {
 }
 
 // Atomic save database to prevent corrupt files
-function saveDb(data) {
+async function saveDb(data) {
   if (useMongo && mongoDb) {
     cachedDbState = data;
-    const col = mongoDb.collection("state");
-    col.replaceOne({ _id: "current_state" }, { ...data }, { upsert: true })
-      .then(() => {
-        console.log("Database state successfully persisted to MongoDB.");
-      })
-      .catch(err => {
-        console.error("Failed to persist database state to MongoDB:", err);
-      });
-    return true;
+    try {
+      const col = mongoDb.collection("state");
+      await col.replaceOne({ _id: "current_state" }, { ...data }, { upsert: true });
+      console.log("Database state successfully persisted to MongoDB.");
+      return true;
+    } catch (err) {
+      console.error("Failed to persist database state to MongoDB:", err);
+      return false;
+    }
   }
 
   try {

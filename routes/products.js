@@ -20,7 +20,7 @@ router.get("/:id", (req, res) => {
 });
 
 // Create a new product
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   const { nameEn, nameBn, descriptionEn, descriptionBn, category, costUSD, priceUSD, discountPercent, images, sizes, colors, stock } = req.body;
   
   if (!nameEn || !nameBn || !category || (Array.isArray(category) && category.length === 0) || costUSD === undefined || priceUSD === undefined || stock === undefined) {
@@ -55,7 +55,7 @@ router.post("/", (req, res) => {
     details: `Admin added product "${newProduct.nameEn}" under category "${Array.isArray(category) ? category.join(", ") : category}" with stock ${stock}.`
   });
 
-  saveDb(db);
+  await saveDb(db);
 
   res.status(201).json({
     message: "Product created successfully",
@@ -64,7 +64,7 @@ router.post("/", (req, res) => {
 });
 
 // Update a product
-router.put("/:id", (req, res) => {
+router.put("/:id", async (req, res) => {
   const db = getDb();
   const productIndex = db.products.findIndex(p => p.id === req.params.id);
   if (productIndex === -1) {
@@ -96,7 +96,7 @@ router.put("/:id", (req, res) => {
     details: `Admin updated product attributes for "${product.nameEn}" (ID: ${product.id}).`
   });
 
-  saveDb(db);
+  await saveDb(db);
 
   res.status(200).json({
     message: "Product updated successfully",
@@ -105,7 +105,7 @@ router.put("/:id", (req, res) => {
 });
 
 // Delete a product
-router.delete("/:id", (req, res) => {
+router.delete("/:id", async (req, res) => {
   const db = getDb();
   const productIndex = db.products.findIndex(p => p.id === req.params.id);
   if (productIndex === -1) {
@@ -121,7 +121,7 @@ router.delete("/:id", (req, res) => {
     details: `Admin deleted product "${deletedProduct.nameEn}" (ID: ${deletedProduct.id}).`
   });
 
-  saveDb(db);
+  await saveDb(db);
 
   res.status(200).json({
     message: "Product deleted successfully",

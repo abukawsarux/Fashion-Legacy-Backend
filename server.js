@@ -75,14 +75,14 @@ app.get("/api/flash-sale", (req, res) => {
   res.status(200).json({ flashSaleEnd: db.flashSaleEnd || new Date(Date.now() + 86400000).toISOString() });
 });
 
-app.post("/api/flash-sale", (req, res) => {
+app.post("/api/flash-sale", async (req, res) => {
   const { flashSaleEnd } = req.body;
   if (!flashSaleEnd) {
     return res.status(400).json({ error: "Missing flashSaleEnd timestamp." });
   }
   const db = getDb();
   db.flashSaleEnd = flashSaleEnd;
-  saveDb(db);
+  await saveDb(db);
   res.status(200).json({ message: "Flash sale countdown updated successfully", flashSaleEnd });
 });
 
