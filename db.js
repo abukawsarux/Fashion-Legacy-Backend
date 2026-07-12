@@ -87,6 +87,9 @@ function initDb() {
 
 // Connect to MongoDB Atlas (for live Vercel deployments)
 async function connectMongo() {
+  if (useMongo && mongoClient && mongoDb) {
+    return;
+  }
   const uri = process.env.MONGODB_URI;
   if (!uri) {
     console.log("No MONGODB_URI found, using local JSON database file.");

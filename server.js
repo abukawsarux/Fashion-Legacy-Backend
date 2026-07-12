@@ -43,6 +43,16 @@ app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 // Log HTTP requests in development console
 app.use(morgan("dev"));
 
+// Ensure MongoDB is connected on every request (essential for Vercel serverless cold starts)
+app.use(async (req, res, next) => {
+  try {
+    await connectMongo();
+  } catch (err) {
+    console.error("MongoDB middleware connection error:", err);
+  }
+  next();
+});
+
 // Database Auto-Initialization
 getDb();
 
@@ -59,6 +69,23 @@ app.use("/api/orders", ordersRouter);
 app.use("/api/analytics", analyticsRouter);
 app.use("/api/categories", categoriesRouter);
 
+// Flash Sale Countdown API endpoints
+app.get("/api/flash-sale", (req, res) => {
+  const db = getDb();
+  res.status(200).json({ flashSaleEnd: db.flashSaleEnd || new Date(Date.now() + 86400000).toISOString() });
+});
+
+app.post("/api/flash-sale", (req, res) => {
+  const { flashSaleEnd } = req.body;
+  if (!flashSaleEnd) {
+    return res.status(400).json({ error: "Missing flashSaleEnd timestamp." });
+  }
+  const db = getDb();
+  db.flashSaleEnd = flashSaleEnd;
+  saveDb(db);
+  res.status(200).json({ message: "Flash sale countdown updated successfully", flashSaleEnd });
+});
+
 // Health check root route
 app.get("/", (req, res) => {
   res.status(200).json({
@@ -68,12 +95,17 @@ app.get("/", (req, res) => {
   });
 });
 
-// Start Server listening
-connectMongo().then(() => {
-  app.listen(PORT, () => {
-    console.log(`===============================================`);
-    console.log(`Fashion Legacy Backend API Server running!`);
-    console.log(`Listening on address: http://localhost:${PORT}`);
-    console.log(`===============================================`);
+// Start Server listening (for local execution)
+if (process.env.NODE_ENV !== "production") {
+  connectMongo().then(() => {
+    app.listen(PORT, () => {
+      console.log(`===============================================`);
+      console.log(`Fashion Legacy Backend API Server running!`);
+      console.log(`Listening on address: http://localhost:${PORT}`);
+      console.log(`===============================================`);
+    });
   });
-});
+}
+
+// Export app for Vercel serverless execution
+module.exports = app;
