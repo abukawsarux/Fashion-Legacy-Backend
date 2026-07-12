@@ -2,7 +2,8 @@
 const fs = require("fs");
 const path = require("path");
 
-const dataDir = path.join(__dirname, "data");
+const isVercel = process.env.VERCEL || process.env.NOW_BUILDER || process.env.NODE_ENV === "production";
+const dataDir = isVercel ? "/tmp" : path.join(__dirname, "data");
 const dbPath = path.join(dataDir, "db.json");
 
 // Default initial products (matching website and dashboard default categories and currency conversion logic)
@@ -59,13 +60,23 @@ const DEFAULT_DB_STATE = {
 
 // Check and initialize
 function initDb() {
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
+  try {
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
 
-  if (!fs.existsSync(dbPath)) {
-    fs.writeFileSync(dbPath, JSON.stringify(DEFAULT_DB_STATE, null, 2), "utf8");
-    console.log("Database seeded successfully in:", dbPath);
+    if (!fs.existsSync(dbPath)) {
+      const bundledDbPath = path.join(__dirname, "data/db.json");
+      if (isVercel && fs.existsSync(bundledDbPath)) {
+        fs.copyFileSync(bundledDbPath, dbPath);
+        console.log("Database initialized by copying bundled db.json to /tmp");
+      } else {
+        fs.writeFileSync(dbPath, JSON.stringify(DEFAULT_DB_STATE, null, 2), "utf8");
+        console.log("Database seeded successfully in:", dbPath);
+      }
+    }
+  } catch (error) {
+    console.error("Failed to initialize database", error);
   }
 }
 
@@ -175,8 +186,8 @@ function getDb() {
 
 // Atomic save database to prevent corrupt files
 function saveDb(data) {
-  initDb();
   try {
+    initDb();
     const tempPath = `${dbPath}.tmp`;
     fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), "utf8");
     fs.renameSync(tempPath, dbPath);
