@@ -111,96 +111,31 @@ async function connectMongo() {
     mongoDb = mongoClient.db("fashion_legacy_db");
     console.log("Connected to MongoDB Atlas successfully!");
     
-    // Load initial state
+    // Load initial state — NEVER rewrite existing data on startup
     const col = mongoDb.collection("state");
     const doc = await col.findOne({ _id: "current_state" });
     if (doc) {
       delete doc._id;
       // Deep-clone to prevent MongoDB driver internal buffer sharing
       cachedDbState = JSON.parse(JSON.stringify(doc));
+
+      // Only ensure required top-level keys exist (safe, additive only)
+      if (!cachedDbState.categories) cachedDbState.categories = [];
+      if (!cachedDbState.products) cachedDbState.products = [];
+      if (!cachedDbState.orders) cachedDbState.orders = [];
+      if (!cachedDbState.traffic) cachedDbState.traffic = [];
+      if (!cachedDbState.users) cachedDbState.users = [];
+      if (!cachedDbState.logs) cachedDbState.logs = [];
+
       useMongo = true;
-      console.log("Loaded database state from MongoDB.");
+      console.log(`Loaded database state from MongoDB: ${cachedDbState.categories.length} categories, ${cachedDbState.products.length} products.`);
     } else {
-      // Seed initial state
-      await col.insertOne({ _id: "current_state", ...DEFAULT_DB_STATE });
-      cachedDbState = JSON.parse(JSON.stringify(DEFAULT_DB_STATE));
+      // First-time only: seed with defaults (document does not exist yet)
+      const seedState = JSON.parse(JSON.stringify(DEFAULT_DB_STATE));
+      await col.insertOne({ _id: "current_state", ...seedState });
+      cachedDbState = seedState;
       useMongo = true;
-      console.log("Seeded initial database state to MongoDB.");
-    }
-
-    // Run dynamic sync check on cachedDbState (to ensure new defaults are added/synced)
-    let updated = false;
-
-    if (!cachedDbState.categories) cachedDbState.categories = [];
-    DEFAULT_CATEGORIES.forEach(defaultCat => {
-      const existingCatIndex = cachedDbState.categories.findIndex(c => c.id === defaultCat.id);
-      if (existingCatIndex === -1) {
-        cachedDbState.categories.push(defaultCat);
-        updated = true;
-      }
-    });
-
-    if (!cachedDbState.products) cachedDbState.products = [];
-    DEFAULT_PRODUCTS.forEach(defaultProd => {
-      const existingProdIndex = cachedDbState.products.findIndex(p => p.id === defaultProd.id);
-      if (existingProdIndex === -1) {
-        cachedDbState.products.push(defaultProd);
-        updated = true;
-      } else {
-        const existing = cachedDbState.products[existingProdIndex];
-        let hasDiff = false;
-        const fieldsToSync = ["nameEn", "nameBn", "descriptionEn", "descriptionBn", "category", "costUSD", "priceUSD", "discountPercent"];
-        fieldsToSync.forEach(field => {
-          if (existing[field] !== defaultProd[field]) {
-            existing[field] = defaultProd[field];
-            hasDiff = true;
-          }
-        });
-        if (JSON.stringify(existing.images) !== JSON.stringify(defaultProd.images)) {
-          existing.images = defaultProd.images;
-          hasDiff = true;
-        }
-        if (JSON.stringify(existing.sizes) !== JSON.stringify(defaultProd.sizes)) {
-          existing.sizes = defaultProd.sizes;
-          hasDiff = true;
-        }
-        if (JSON.stringify(existing.colors) !== JSON.stringify(defaultProd.colors)) {
-          existing.colors = defaultProd.colors;
-          hasDiff = true;
-        }
-        if (hasDiff) {
-          cachedDbState.products[existingProdIndex] = existing;
-          updated = true;
-        }
-      }
-    });
-
-    if (!cachedDbState.users) cachedDbState.users = [];
-    DEFAULT_USERS.forEach(defaultUser => {
-      const existingUserIndex = cachedDbState.users.findIndex(u => u.email === defaultUser.email);
-      if (existingUserIndex === -1) {
-        cachedDbState.users.push(defaultUser);
-        updated = true;
-      } else {
-        const existing = cachedDbState.users[existingUserIndex];
-        let hasDiff = false;
-        const userFields = ["name", "phone", "address", "avatar", "password"];
-        userFields.forEach(field => {
-          if (existing[field] !== defaultUser[field]) {
-            existing[field] = defaultUser[field];
-            hasDiff = true;
-          }
-        });
-        if (hasDiff) {
-          cachedDbState.users[existingUserIndex] = existing;
-          updated = true;
-        }
-      }
-    });
-
-    if (updated) {
-      await col.replaceOne({ _id: "current_state" }, { ...cachedDbState }, { upsert: true });
-      console.log("Persisted updated default seed changes to MongoDB.");
+      console.log("First-time seed: inserted default database state to MongoDB.");
     }
   } catch (err) {
     console.error("Critical: Failed to connect to MongoDB Atlas:", err);
