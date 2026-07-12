@@ -47,10 +47,15 @@ app.use(morgan("dev"));
 app.use(async (req, res, next) => {
   try {
     await connectMongo();
+    next();
   } catch (err) {
     console.error("MongoDB middleware connection error:", err);
+    if (process.env.MONGODB_URI) {
+      res.status(500).json({ error: "Failed to connect to the database. Please try again." });
+    } else {
+      next(); // fallback to local JSON database if not configured for Mongo
+    }
   }
-  next();
 });
 
 // Mount routers

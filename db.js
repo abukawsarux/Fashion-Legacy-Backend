@@ -109,7 +109,6 @@ async function connectMongo() {
     });
     await mongoClient.connect();
     mongoDb = mongoClient.db("fashion_legacy_db");
-    useMongo = true;
     console.log("Connected to MongoDB Atlas successfully!");
     
     // Load initial state
@@ -118,11 +117,13 @@ async function connectMongo() {
     if (doc) {
       delete doc._id;
       cachedDbState = doc;
+      useMongo = true;
       console.log("Loaded database state from MongoDB.");
     } else {
       // Seed initial state
       await col.insertOne({ _id: "current_state", ...DEFAULT_DB_STATE });
       cachedDbState = JSON.parse(JSON.stringify(DEFAULT_DB_STATE));
+      useMongo = true;
       console.log("Seeded initial database state to MongoDB.");
     }
 
@@ -202,12 +203,8 @@ async function connectMongo() {
     }
   } catch (err) {
     console.error("Critical: Failed to connect to MongoDB Atlas:", err);
-    if (process.env.MONGODB_URI) {
-      useMongo = true; // Stick to Mongo and throw error to prevent silent local file fallback
-      throw err;
-    } else {
-      useMongo = false;
-    }
+    useMongo = false;
+    throw err;
   }
 }
 
