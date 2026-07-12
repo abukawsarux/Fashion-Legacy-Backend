@@ -183,6 +183,11 @@
       "timestamp": "2026-07-12T04:37:14.638Z",
       "action": "Category Deleted",
       "details": "Admin deleted category \"Sajol\" (ID: cat_sajol)."
+    },
+    {
+      "timestamp": "2026-07-12T05:48:19.820Z",
+      "action": "Category Created",
+      "details": "Admin added category \"Fitness & nutrition\" (ID: cat_fitness_nutrition)."
     }
   ],
   "categories": [
@@ -221,6 +226,12 @@
       "nameEn": "Kids & Toys",
       "nameBn": "বাচ্চাদের খেলনা ও পোশাক",
       "image": "/images/categories/kids.png"
+    },
+    {
+      "id": "cat_fitness_nutrition",
+      "nameEn": "Fitness & nutrition",
+      "nameBn": "ফিটনেস ও পুষ্টি",
+      "image": "/uploads/category-1783835299818.png"
     }
   ]
 }

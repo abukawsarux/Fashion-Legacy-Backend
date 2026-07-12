@@ -1,6 +1,12 @@
 // db.js
 const fs = require("fs");
 const path = require("path");
+const { MongoClient } = require("mongodb");
+
+let mongoClient = null;
+let mongoDb = null;
+let useMongo = false;
+let cachedDbState = null;
 
 const isVercel = process.env.VERCEL || process.env.NOW_BUILDER || process.env.NODE_ENV === "production";
 const dataDir = isVercel ? "/tmp" : path.join(__dirname, "data");
@@ -80,8 +86,128 @@ function initDb() {
   }
 }
 
+// Connect to MongoDB Atlas (for live Vercel deployments)
+async function connectMongo() {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    console.log("No MONGODB_URI found, using local JSON database file.");
+    return;
+  }
+  
+  try {
+    console.log("Connecting to MongoDB Atlas...");
+    mongoClient = new MongoClient(uri);
+    await mongoClient.connect();
+    mongoDb = mongoClient.db("fashion_legacy_db");
+    useMongo = true;
+    console.log("Connected to MongoDB Atlas successfully!");
+    
+    // Load initial state
+    const col = mongoDb.collection("state");
+    const doc = await col.findOne({ _id: "current_state" });
+    if (doc) {
+      delete doc._id;
+      cachedDbState = doc;
+      console.log("Loaded database state from MongoDB.");
+    } else {
+      // Seed initial state
+      await col.insertOne({ _id: "current_state", ...DEFAULT_DB_STATE });
+      cachedDbState = JSON.parse(JSON.stringify(DEFAULT_DB_STATE));
+      console.log("Seeded initial database state to MongoDB.");
+    }
+
+    // Run dynamic sync check on cachedDbState (to ensure new defaults are added/synced)
+    let updated = false;
+
+    if (!cachedDbState.categories) cachedDbState.categories = [];
+    DEFAULT_CATEGORIES.forEach(defaultCat => {
+      const existingCatIndex = cachedDbState.categories.findIndex(c => c.id === defaultCat.id);
+      if (existingCatIndex === -1) {
+        cachedDbState.categories.push(defaultCat);
+        updated = true;
+      } else {
+        const existing = cachedDbState.categories[existingCatIndex];
+        if (existing.nameEn !== defaultCat.nameEn || existing.nameBn !== defaultCat.nameBn || existing.image !== defaultCat.image) {
+          cachedDbState.categories[existingCatIndex] = { ...existing, ...defaultCat };
+          updated = true;
+        }
+      }
+    });
+
+    if (!cachedDbState.products) cachedDbState.products = [];
+    DEFAULT_PRODUCTS.forEach(defaultProd => {
+      const existingProdIndex = cachedDbState.products.findIndex(p => p.id === defaultProd.id);
+      if (existingProdIndex === -1) {
+        cachedDbState.products.push(defaultProd);
+        updated = true;
+      } else {
+        const existing = cachedDbState.products[existingProdIndex];
+        let hasDiff = false;
+        const fieldsToSync = ["nameEn", "nameBn", "descriptionEn", "descriptionBn", "category", "costUSD", "priceUSD", "discountPercent"];
+        fieldsToSync.forEach(field => {
+          if (existing[field] !== defaultProd[field]) {
+            existing[field] = defaultProd[field];
+            hasDiff = true;
+          }
+        });
+        if (JSON.stringify(existing.images) !== JSON.stringify(defaultProd.images)) {
+          existing.images = defaultProd.images;
+          hasDiff = true;
+        }
+        if (JSON.stringify(existing.sizes) !== JSON.stringify(defaultProd.sizes)) {
+          existing.sizes = defaultProd.sizes;
+          hasDiff = true;
+        }
+        if (JSON.stringify(existing.colors) !== JSON.stringify(defaultProd.colors)) {
+          existing.colors = defaultProd.colors;
+          hasDiff = true;
+        }
+        if (hasDiff) {
+          cachedDbState.products[existingProdIndex] = existing;
+          updated = true;
+        }
+      }
+    });
+
+    if (!cachedDbState.users) cachedDbState.users = [];
+    DEFAULT_USERS.forEach(defaultUser => {
+      const existingUserIndex = cachedDbState.users.findIndex(u => u.email === defaultUser.email);
+      if (existingUserIndex === -1) {
+        cachedDbState.users.push(defaultUser);
+        updated = true;
+      } else {
+        const existing = cachedDbState.users[existingUserIndex];
+        let hasDiff = false;
+        const userFields = ["name", "phone", "address", "avatar", "password"];
+        userFields.forEach(field => {
+          if (existing[field] !== defaultUser[field]) {
+            existing[field] = defaultUser[field];
+            hasDiff = true;
+          }
+        });
+        if (hasDiff) {
+          cachedDbState.users[existingUserIndex] = existing;
+          updated = true;
+        }
+      }
+    });
+
+    if (updated) {
+      await col.replaceOne({ _id: "current_state" }, { ...cachedDbState }, { upsert: true });
+      console.log("Persisted updated default seed changes to MongoDB.");
+    }
+  } catch (err) {
+    console.error("Failed to connect to MongoDB, falling back to local file:", err);
+    useMongo = false;
+  }
+}
+
 // Read database
 function getDb() {
+  if (useMongo && cachedDbState) {
+    return cachedDbState;
+  }
+
   initDb();
   try {
     const data = fs.readFileSync(dbPath, "utf8");
@@ -186,6 +312,19 @@ function getDb() {
 
 // Atomic save database to prevent corrupt files
 function saveDb(data) {
+  if (useMongo && mongoDb) {
+    cachedDbState = data;
+    const col = mongoDb.collection("state");
+    col.replaceOne({ _id: "current_state" }, { ...data }, { upsert: true })
+      .then(() => {
+        console.log("Database state successfully persisted to MongoDB.");
+      })
+      .catch(err => {
+        console.error("Failed to persist database state to MongoDB:", err);
+      });
+    return true;
+  }
+
   try {
     initDb();
     const tempPath = `${dbPath}.tmp`;
@@ -199,6 +338,7 @@ function saveDb(data) {
 }
 
 module.exports = {
+  connectMongo,
   getDb,
   saveDb
 };

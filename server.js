@@ -4,7 +4,7 @@ const cors = require("cors");
 const morgan = require("morgan");
 require("dotenv").config();
 
-const { getDb } = require("./db");
+const { getDb, connectMongo } = require("./db");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -69,9 +69,11 @@ app.get("/", (req, res) => {
 });
 
 // Start Server listening
-app.listen(PORT, () => {
-  console.log(`===============================================`);
-  console.log(`Fashion Legacy Backend API Server running!`);
-  console.log(`Listening on address: http://localhost:${PORT}`);
-  console.log(`===============================================`);
+connectMongo().then(() => {
+  app.listen(PORT, () => {
+    console.log(`===============================================`);
+    console.log(`Fashion Legacy Backend API Server running!`);
+    console.log(`Listening on address: http://localhost:${PORT}`);
+    console.log(`===============================================`);
+  });
 });
