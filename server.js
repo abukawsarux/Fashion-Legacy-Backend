@@ -14,6 +14,8 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
   "http://localhost:3002",
+  "https://fashionlegacy.live",
+  "https://dashboard.fashionlegacy.live",
   process.env.WEBSITE_URL,
   process.env.DASHBOARD_URL
 ].filter(Boolean);
