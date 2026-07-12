@@ -698,6 +698,14 @@
       "address": "Merul Badda , Boithakhali , 1787 Golden Tower",
       "avatar": "avatar_men",
       "password": "password123"
+    },
+    {
+      "name": "Shamim Ahsan",
+      "email": "shamiim@fashionlegacy.live",
+      "phone": "01779024048",
+      "address": "House 14, Road 5, Uttara Sector 4, Dhaka",
+      "avatar": "avatar_men",
+      "password": "12345678"
     }
   ],
   "logs": [
