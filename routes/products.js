@@ -169,8 +169,10 @@ router.post("/upload", (req, res) => {
 
   fs.writeFile(filepath, buffer, (err) => {
     if (err) {
-      console.error("Failed to save uploaded file:", err);
-      return res.status(500).json({ error: "Failed to write file to disk." });
+      console.warn("Failed to save uploaded file to disk, falling back to base64 string:", err);
+      return res.status(200).json({
+        imageUrl: image
+      });
     }
     
     // Return relative URL

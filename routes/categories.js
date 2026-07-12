@@ -9,35 +9,40 @@ const { getDb, saveDb } = require("../db");
 const saveBase64Image = (base64Str) => {
   if (!base64Str) return null;
 
-  // Expecting format like: "data:image/png;base64,iVBORw0KGgoAAA..."
-  const matches = base64Str.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-  if (!matches || matches.length !== 3) {
-    return null;
+  try {
+    // Expecting format like: "data:image/png;base64,iVBORw0KGgoAAA..."
+    const matches = base64Str.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      return null;
+    }
+
+    const mimeType = matches[1];
+    const base64Data = matches[2];
+    const buffer = Buffer.from(base64Data, "base64");
+
+    let extension = "png";
+    if (mimeType === "image/jpeg" || mimeType === "image/jpg") {
+      extension = "jpg";
+    } else if (mimeType === "image/webp") {
+      extension = "webp";
+    } else if (mimeType === "image/gif") {
+      extension = "gif";
+    }
+
+    const uploadDir = path.join(__dirname, "../public/uploads");
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    const filename = `category-${Date.now()}.${extension}`;
+    const filepath = path.join(uploadDir, filename);
+
+    fs.writeFileSync(filepath, buffer);
+    return `/uploads/${filename}`;
+  } catch (err) {
+    console.warn("Failed to write category image to disk, falling back to base64 data:", err);
+    return base64Str;
   }
-
-  const mimeType = matches[1];
-  const base64Data = matches[2];
-  const buffer = Buffer.from(base64Data, "base64");
-
-  let extension = "png";
-  if (mimeType === "image/jpeg" || mimeType === "image/jpg") {
-    extension = "jpg";
-  } else if (mimeType === "image/webp") {
-    extension = "webp";
-  } else if (mimeType === "image/gif") {
-    extension = "gif";
-  }
-
-  const uploadDir = path.join(__dirname, "../public/uploads");
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-
-  const filename = `category-${Date.now()}.${extension}`;
-  const filepath = path.join(uploadDir, filename);
-
-  fs.writeFileSync(filepath, buffer);
-  return `/uploads/${filename}`;
 };
 
 // Get all categories
