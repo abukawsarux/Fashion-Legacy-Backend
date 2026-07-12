@@ -66,7 +66,7 @@
       ],
       "rating": 4.5,
       "reviewsCount": 72,
-      "stock": 80
+      "stock": 73
     },
     {
       "id": "prod-women-1",
@@ -100,7 +100,7 @@
       ],
       "rating": 4.8,
       "reviewsCount": 124,
-      "stock": 35
+      "stock": 33
     },
     {
       "id": "prod-men-1",
@@ -134,7 +134,7 @@
       ],
       "rating": 4.7,
       "reviewsCount": 98,
-      "stock": 28
+      "stock": 26
     },
     {
       "id": "prod-shoes-1",
@@ -169,7 +169,7 @@
       ],
       "rating": 4.9,
       "reviewsCount": 156,
-      "stock": 50
+      "stock": 46
     },
     {
       "id": "prod-watch-1",
@@ -201,7 +201,7 @@
       ],
       "rating": 4.6,
       "reviewsCount": 84,
-      "stock": 15
+      "stock": 14
     },
     {
       "id": "prod-kids-1",
@@ -235,10 +235,314 @@
       ],
       "rating": 4.7,
       "reviewsCount": 52,
-      "stock": 60
+      "stock": 59
     }
   ],
   "orders": [
+    {
+      "id": "ORD-4781",
+      "customerName": "Sajol",
+      "customerEmail": "sajolibn2@gmail.com",
+      "customerAddress": "Merul Badda, Boithakhali , 1785 Green Tower",
+      "items": [
+        {
+          "productId": "prod",
+          "nameEn": "Comfort Slip-On Walking Shoes",
+          "nameBn": "কমফোর্ট স্লিপ-অন ওয়াকিং শু",
+          "priceUSD": 42.4915,
+          "quantity": 1,
+          "size": "39",
+          "colorEn": "Dark Heather Grey"
+        },
+        {
+          "productId": "prod",
+          "nameEn": "Vintage Floral Summer Maxi Dress",
+          "nameBn": "ভিন্টেজ ফ্লোরাল সামার ম্যাক্সি ড্রেস",
+          "priceUSD": 34.993,
+          "quantity": 1,
+          "size": "S",
+          "colorEn": "Peach Puff"
+        },
+        {
+          "productId": "prod",
+          "nameEn": "Chic Woolen Knitted Cardigan",
+          "nameBn": "চটকদার উলের বোনা কার্ডিগান",
+          "priceUSD": 34.995,
+          "quantity": 1,
+          "size": "S",
+          "colorEn": "Creamy Beige"
+        }
+      ],
+      "totalUSD": 113.15,
+      "costUSD": 56.91,
+      "createdAt": "2026-07-12T03:55:02.429Z",
+      "status": "Delivered",
+      "paymentMethod": "Mobile Banking (NAGAD)"
+    },
+    {
+      "id": "ORD-4497",
+      "customerName": "Jamil Hossain",
+      "customerEmail": "jamilhossain@mock.com",
+      "customerAddress": "Sylhet Sadar, Sylhet, Bangladesh",
+      "items": [
+        {
+          "productId": "prod-kids-1",
+          "nameEn": "Kids Playtime Cotton Set",
+          "nameBn": "কিডস প্লে-টাইম কটন সেট",
+          "priceUSD": 29.99,
+          "quantity": 1,
+          "size": "3-4Y",
+          "colorEn": "Sunshine Yellow"
+        }
+      ],
+      "totalUSD": 29.99,
+      "costUSD": 11.5,
+      "createdAt": "2026-07-12T03:25:38.478Z",
+      "status": "Pending",
+      "paymentMethod": "Cash on Delivery"
+    },
+    {
+      "id": "ORD-6934",
+      "customerName": "Sabbir Ahmed",
+      "customerEmail": "sabbirahmed@mock.com",
+      "customerAddress": "Khulna City, Khulna, Bangladesh",
+      "items": [
+        {
+          "productId": "prod-shoes-1",
+          "nameEn": "Ultra-Lightweight Athletic Sneakers",
+          "nameBn": "আল্ট্রা-লাইটওয়েট অ্যাথলেটিক স্নিকার্স",
+          "priceUSD": 79.99,
+          "quantity": 1,
+          "size": "40",
+          "colorEn": "Stealth Black"
+        }
+      ],
+      "totalUSD": 79.99,
+      "costUSD": 35,
+      "createdAt": "2026-07-12T03:25:34.029Z",
+      "status": "Pending",
+      "paymentMethod": "Cash on Delivery"
+    },
+    {
+      "id": "ORD-8670",
+      "customerName": "Kamrul Islam",
+      "customerEmail": "kamrulislam@mock.com",
+      "customerAddress": "Khulna City, Khulna, Bangladesh",
+      "items": [
+        {
+          "productId": "prod-hot-2",
+          "nameEn": "Casual Linen Shirt Long Sleeve",
+          "nameBn": "ক্যাজুয়াল লিনেন শার্ট ফুল হাতা",
+          "priceUSD": 39.99,
+          "quantity": 2,
+          "size": "M",
+          "colorEn": "Ocean Blue"
+        }
+      ],
+      "totalUSD": 79.98,
+      "costUSD": 32,
+      "createdAt": "2026-07-12T03:25:32.990Z",
+      "status": "Pending",
+      "paymentMethod": "Cash on Delivery"
+    },
+    {
+      "id": "ORD-1543",
+      "customerName": "Sabbir Ahmed",
+      "customerEmail": "sabbirahmed@mock.com",
+      "customerAddress": "Mirpur-10, Dhaka, Bangladesh",
+      "items": [
+        {
+          "productId": "prod-hot-2",
+          "nameEn": "Casual Linen Shirt Long Sleeve",
+          "nameBn": "ক্যাজুয়াল লিনেন শার্ট ফুল হাতা",
+          "priceUSD": 39.99,
+          "quantity": 2,
+          "size": "M",
+          "colorEn": "Ocean Blue"
+        }
+      ],
+      "totalUSD": 79.98,
+      "costUSD": 32,
+      "createdAt": "2026-07-12T03:25:32.102Z",
+      "status": "Pending",
+      "paymentMethod": "Cash on Delivery"
+    },
+    {
+      "id": "ORD-5930",
+      "customerName": "Fariha Sultana",
+      "customerEmail": "farihasultana@mock.com",
+      "customerAddress": "Khulna City, Khulna, Bangladesh",
+      "items": [
+        {
+          "productId": "prod-watch-1",
+          "nameEn": "Aero-Luxury Chronograph Watch",
+          "nameBn": "অ্যারো-লাক্সারি ক্রোনোগ্রাফ ঘড়ি",
+          "priceUSD": 149.99,
+          "quantity": 1,
+          "size": "One Size",
+          "colorEn": "Sapphire Gold"
+        }
+      ],
+      "totalUSD": 149.99,
+      "costUSD": 65,
+      "createdAt": "2026-07-12T03:25:28.822Z",
+      "status": "Pending",
+      "paymentMethod": "Cash on Delivery"
+    },
+    {
+      "id": "ORD-9962",
+      "customerName": "Jamil Hossain",
+      "customerEmail": "jamilhossain@mock.com",
+      "customerAddress": "Uttara, Dhaka, Bangladesh",
+      "items": [
+        {
+          "productId": "prod-hot-2",
+          "nameEn": "Casual Linen Shirt Long Sleeve",
+          "nameBn": "ক্যাজুয়াল লিনেন শার্ট ফুল হাতা",
+          "priceUSD": 39.99,
+          "quantity": 2,
+          "size": "XL",
+          "colorEn": "Desert Khaki"
+        }
+      ],
+      "totalUSD": 79.98,
+      "costUSD": 32,
+      "createdAt": "2026-07-12T03:25:27.998Z",
+      "status": "Pending",
+      "paymentMethod": "Cash on Delivery"
+    },
+    {
+      "id": "ORD-6668",
+      "customerName": "Fariha Sultana",
+      "customerEmail": "farihasultana@mock.com",
+      "customerAddress": "Khulna City, Khulna, Bangladesh",
+      "items": [
+        {
+          "productId": "prod-shoes-1",
+          "nameEn": "Ultra-Lightweight Athletic Sneakers",
+          "nameBn": "আল্ট্রা-লাইটওয়েট অ্যাথলেটিক স্নিকার্স",
+          "priceUSD": 79.99,
+          "quantity": 2,
+          "size": "43",
+          "colorEn": "Stealth Black"
+        }
+      ],
+      "totalUSD": 159.98,
+      "costUSD": 70,
+      "createdAt": "2026-07-12T03:25:26.966Z",
+      "status": "Pending",
+      "paymentMethod": "Cash on Delivery"
+    },
+    {
+      "id": "ORD-7064",
+      "customerName": "Fariha Sultana",
+      "customerEmail": "farihasultana@mock.com",
+      "customerAddress": "Uttara, Dhaka, Bangladesh",
+      "items": [
+        {
+          "productId": "prod-women-1",
+          "nameEn": "Vintage Floral Summer Maxi Dress",
+          "nameBn": "ভিন্টেজ ফ্লোরাল সামার ম্যাক্সি ড্রেস",
+          "priceUSD": 49.99,
+          "quantity": 2,
+          "size": "L",
+          "colorEn": "Peach Puff"
+        }
+      ],
+      "totalUSD": 99.98,
+      "costUSD": 40,
+      "createdAt": "2026-07-12T03:25:25.950Z",
+      "status": "Pending",
+      "paymentMethod": "Cash on Delivery"
+    },
+    {
+      "id": "ORD-7806",
+      "customerName": "Fariha Sultana",
+      "customerEmail": "farihasultana@mock.com",
+      "customerAddress": "Mirpur-10, Dhaka, Bangladesh",
+      "items": [
+        {
+          "productId": "prod-men-1",
+          "nameEn": "Premium Urban Denim Jacket",
+          "nameBn": "প্রিমিয়াম আরবান ডেনিম জ্যাকেট",
+          "priceUSD": 59.99,
+          "quantity": 2,
+          "size": "XL",
+          "colorEn": "Charcoal Black"
+        }
+      ],
+      "totalUSD": 119.98,
+      "costUSD": 50,
+      "createdAt": "2026-07-12T03:25:25.046Z",
+      "status": "Pending",
+      "paymentMethod": "Cash on Delivery"
+    },
+    {
+      "id": "ORD-7007",
+      "customerName": "Jamil Hossain",
+      "customerEmail": "jamilhossain@mock.com",
+      "customerAddress": "Khulna City, Khulna, Bangladesh",
+      "items": [
+        {
+          "productId": "prod-hot-2",
+          "nameEn": "Casual Linen Shirt Long Sleeve",
+          "nameBn": "ক্যাজুয়াল লিনেন শার্ট ফুল হাতা",
+          "priceUSD": 39.99,
+          "quantity": 1,
+          "size": "XL",
+          "colorEn": "Desert Khaki"
+        }
+      ],
+      "totalUSD": 39.99,
+      "costUSD": 16,
+      "createdAt": "2026-07-12T03:25:23.967Z",
+      "status": "Pending",
+      "paymentMethod": "Cash on Delivery"
+    },
+    {
+      "id": "ORD-5977",
+      "customerName": "Shamim",
+      "customerEmail": "sajolibn2@gmail.com",
+      "customerAddress": "Nalta Sharif",
+      "items": [
+        {
+          "productId": "prod",
+          "nameEn": "Chic Woolen Knitted Cardigan",
+          "nameBn": "চটকদার উলের বোনা কার্ডিগান",
+          "priceUSD": 29.995,
+          "quantity": 1,
+          "size": "S",
+          "colorEn": "Creamy Beige"
+        }
+      ],
+      "totalUSD": 30.66,
+      "costUSD": 15.66,
+      "createdAt": "2026-07-06T07:54:02.426Z",
+      "status": "Pending",
+      "paymentMethod": "Cash on Delivery"
+    },
+    {
+      "id": "ORD-3166",
+      "customerName": "Kamrul Islam",
+      "customerEmail": "kamrulislam@mock.com",
+      "customerAddress": "Sylhet Sadar, Sylhet, Bangladesh",
+      "items": [
+        {
+          "productId": "prod-shoes-1",
+          "nameEn": "Ultra-Lightweight Athletic Sneakers",
+          "nameBn": "আল্ট্রা-লাইটওয়েট অ্যাথলেটিক স্নিকার্স",
+          "priceUSD": 79.99,
+          "quantity": 1,
+          "size": "40",
+          "colorEn": "Crimson Gold"
+        }
+      ],
+      "totalUSD": 79.99,
+      "costUSD": 35,
+      "createdAt": "2026-07-06T07:16:34.904Z",
+      "status": "Pending",
+      "paymentMethod": "Cash on Delivery"
+    },
     {
       "id": "ORD-3362",
       "customerName": "Test Customer",
@@ -336,12 +640,6 @@
   ],
   "traffic": [
     {
-      "date": "01 Jul",
-      "visitors": 510,
-      "pageViews": 1530,
-      "conversions": 15
-    },
-    {
       "date": "02 Jul",
       "visitors": 480,
       "pageViews": 1390,
@@ -373,9 +671,15 @@
     },
     {
       "date": "Jul 06",
-      "visitors": 5,
-      "pageViews": 25,
-      "conversions": 1
+      "visitors": 8,
+      "pageViews": 41,
+      "conversions": 3
+    },
+    {
+      "date": "Jul 12",
+      "visitors": 32,
+      "pageViews": 107,
+      "conversions": 11
     }
   ],
   "users": [
@@ -384,6 +688,14 @@
       "email": "raihan@fashionlegacy.live",
       "phone": "01712345678",
       "address": "House 14, Road 5, Uttara Sector 4, Dhaka",
+      "avatar": "avatar_men",
+      "password": "password123"
+    },
+    {
+      "name": "Shamim Ahsan",
+      "email": "sajolibn2@gmail.com",
+      "phone": "01779024048",
+      "address": "Merul Badda , Boithakhali , 1787 Golden Tower",
       "avatar": "avatar_men",
       "password": "password123"
     }
@@ -408,6 +720,144 @@
       "timestamp": "2026-07-06T06:19:52.795Z",
       "action": "Product Deleted",
       "details": "Admin deleted product \"Sajol\" (ID: prod-men-1425)."
+    },
+    {
+      "timestamp": "2026-07-06T07:16:34.923Z",
+      "action": "Simulation Triggered",
+      "details": "Customer simulation: Kamrul Islam purchased 1x \"Ultra-Lightweight Athletic Sneakers\"."
+    },
+    {
+      "timestamp": "2026-07-06T07:17:42.484Z",
+      "action": "Admin Portal Authentication",
+      "details": "Admin session unlocked successfully by Sajol (sajol@fashionlegacy.live)."
+    },
+    {
+      "timestamp": "2026-07-06T07:53:39.830Z",
+      "action": "User Signup",
+      "details": "Customer Shamim (sajolibn2@gmail.com) registered a new account."
+    },
+    {
+      "timestamp": "2026-07-06T07:54:02.426Z",
+      "action": "Order Placed",
+      "details": "Customer Shamim placed order ORD-5977 for ৳30.66."
+    },
+    {
+      "timestamp": "2026-07-12T03:21:17.934Z",
+      "action": "Admin Portal Authentication",
+      "details": "Admin session unlocked successfully by Sajol (sajol@fashionlegacy.live)."
+    },
+    {
+      "timestamp": "2026-07-12T03:25:23.998Z",
+      "action": "Simulation Triggered",
+      "details": "Customer simulation: Jamil Hossain purchased 1x \"Casual Linen Shirt Long Sleeve\"."
+    },
+    {
+      "timestamp": "2026-07-12T03:25:25.046Z",
+      "action": "Simulation Triggered",
+      "details": "Customer simulation: Fariha Sultana purchased 2x \"Premium Urban Denim Jacket\"."
+    },
+    {
+      "timestamp": "2026-07-12T03:25:25.950Z",
+      "action": "Simulation Triggered",
+      "details": "Customer simulation: Fariha Sultana purchased 2x \"Vintage Floral Summer Maxi Dress\"."
+    },
+    {
+      "timestamp": "2026-07-12T03:25:26.966Z",
+      "action": "Simulation Triggered",
+      "details": "Customer simulation: Fariha Sultana purchased 2x \"Ultra-Lightweight Athletic Sneakers\"."
+    },
+    {
+      "timestamp": "2026-07-12T03:25:27.998Z",
+      "action": "Simulation Triggered",
+      "details": "Customer simulation: Jamil Hossain purchased 2x \"Casual Linen Shirt Long Sleeve\"."
+    },
+    {
+      "timestamp": "2026-07-12T03:25:28.822Z",
+      "action": "Simulation Triggered",
+      "details": "Customer simulation: Fariha Sultana purchased 1x \"Aero-Luxury Chronograph Watch\"."
+    },
+    {
+      "timestamp": "2026-07-12T03:25:32.102Z",
+      "action": "Simulation Triggered",
+      "details": "Customer simulation: Sabbir Ahmed purchased 2x \"Casual Linen Shirt Long Sleeve\"."
+    },
+    {
+      "timestamp": "2026-07-12T03:25:32.990Z",
+      "action": "Simulation Triggered",
+      "details": "Customer simulation: Kamrul Islam purchased 2x \"Casual Linen Shirt Long Sleeve\"."
+    },
+    {
+      "timestamp": "2026-07-12T03:25:34.030Z",
+      "action": "Simulation Triggered",
+      "details": "Customer simulation: Sabbir Ahmed purchased 1x \"Ultra-Lightweight Athletic Sneakers\"."
+    },
+    {
+      "timestamp": "2026-07-12T03:25:38.479Z",
+      "action": "Simulation Triggered",
+      "details": "Customer simulation: Jamil Hossain purchased 1x \"Kids Playtime Cotton Set\"."
+    },
+    {
+      "timestamp": "2026-07-12T03:55:02.429Z",
+      "action": "Order Placed",
+      "details": "Customer Sajol placed order ORD-4781 for ৳113.15."
+    },
+    {
+      "timestamp": "2026-07-12T03:55:23.411Z",
+      "action": "Order Status Updated",
+      "details": "Order ORD-4781 state updated from Pending to Delivered."
+    },
+    {
+      "timestamp": "2026-07-12T03:56:26.217Z",
+      "action": "Profile Update",
+      "details": "Customer Shamim Ahsan (sajolibn2@gmail.com) updated profile details."
+    },
+    {
+      "timestamp": "2026-07-12T04:36:47.415Z",
+      "action": "Category Created",
+      "details": "Admin added category \"Sajol\" (ID: cat_sajol)."
+    },
+    {
+      "timestamp": "2026-07-12T04:37:14.638Z",
+      "action": "Category Deleted",
+      "details": "Admin deleted category \"Sajol\" (ID: cat_sajol)."
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat_hot",
+      "nameEn": "Hot Sale",
+      "nameBn": "হট সেল",
+      "image": "/images/categories/hot.png"
+    },
+    {
+      "id": "cat_women",
+      "nameEn": "Women's Fashion",
+      "nameBn": "মহিলাদের ফ্যাশন",
+      "image": "/images/categories/women.png"
+    },
+    {
+      "id": "cat_men",
+      "nameEn": "Men's Fashion",
+      "nameBn": "পুরুষদের ফ্যাশন",
+      "image": "/images/categories/men.png"
+    },
+    {
+      "id": "cat_shoes",
+      "nameEn": "Shoes",
+      "nameBn": "জুতো",
+      "image": "/images/categories/shoes.png"
+    },
+    {
+      "id": "cat_watches",
+      "nameEn": "Watches & Acc.",
+      "nameBn": "ঘড়ি ও অ্যাক্সেসরিজ",
+      "image": "/images/categories/watches.png"
+    },
+    {
+      "id": "cat_kids",
+      "nameEn": "Kids & Toys",
+      "nameBn": "বাচ্চাদের খেলনা ও পোশাক",
+      "image": "/images/categories/kids.png"
     }
   ]
 }

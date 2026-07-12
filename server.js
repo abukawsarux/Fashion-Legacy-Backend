@@ -49,11 +49,13 @@ const authRouter = require("./routes/auth");
 const productsRouter = require("./routes/products");
 const ordersRouter = require("./routes/orders");
 const analyticsRouter = require("./routes/analytics");
+const categoriesRouter = require("./routes/categories");
 
 app.use("/api/auth", authRouter);
 app.use("/api/products", productsRouter);
 app.use("/api/orders", ordersRouter);
 app.use("/api/analytics", analyticsRouter);
+app.use("/api/categories", categoriesRouter);
 
 // Health check root route
 app.get("/", (req, res) => {

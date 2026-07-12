@@ -37,7 +37,7 @@ router.get("/stats", (req, res) => {
   orders.forEach(order => {
     order.items.forEach(item => {
       const prod = products.find(p => p.id === item.productId);
-      const category = prod ? prod.category : "other";
+      const categories = Array.isArray(prod?.category) ? prod.category : (prod?.category ? [prod.category] : ["other"]);
 
       const costPrice = prod ? prod.costUSD : (item.priceUSD * 0.5);
       const sellPrice = item.priceUSD;
@@ -45,13 +45,15 @@ router.get("/stats", (req, res) => {
       const salesVal = sellPrice * item.quantity;
       const profitVal = salesVal - (costPrice * item.quantity);
 
-      if (categorySales[category] !== undefined) {
-        categorySales[category] += salesVal;
-        categoryProfit[category] += profitVal;
-      } else {
-        categorySales[category] = salesVal;
-        categoryProfit[category] = profitVal;
-      }
+      categories.forEach(category => {
+        if (categorySales[category] !== undefined) {
+          categorySales[category] += salesVal;
+          categoryProfit[category] += profitVal;
+        } else {
+          categorySales[category] = salesVal;
+          categoryProfit[category] = profitVal;
+        }
+      });
     });
   });
 

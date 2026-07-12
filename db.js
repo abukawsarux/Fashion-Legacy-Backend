@@ -253,7 +253,17 @@ const DEFAULT_LOGS = [
   }
 ];
 
+const DEFAULT_CATEGORIES = [
+  { id: "cat_hot", nameEn: "Hot Sale", nameBn: "হট সেল", image: "/images/categories/hot.png" },
+  { id: "cat_women", nameEn: "Women's Fashion", nameBn: "মহিলাদের ফ্যাশন", image: "/images/categories/women.png" },
+  { id: "cat_men", nameEn: "Men's Fashion", nameBn: "পুরুষদের ফ্যাশন", image: "/images/categories/men.png" },
+  { id: "cat_shoes", nameEn: "Shoes", nameBn: "জুতো", image: "/images/categories/shoes.png" },
+  { id: "cat_watches", nameEn: "Watches & Acc.", nameBn: "ঘড়ি ও অ্যাক্সেসরিজ", image: "/images/categories/watches.png" },
+  { id: "cat_kids", nameEn: "Kids & Toys", nameBn: "বাচ্চাদের খেলনা ও পোশাক", image: "/images/categories/kids.png" }
+];
+
 const DEFAULT_DB_STATE = {
+  categories: DEFAULT_CATEGORIES,
   products: DEFAULT_PRODUCTS,
   orders: DEFAULT_ORDERS,
   traffic: DEFAULT_TRAFFIC,
@@ -278,7 +288,99 @@ function getDb() {
   initDb();
   try {
     const data = fs.readFileSync(dbPath, "utf8");
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    
+    let updated = false;
+
+    // 1. Sync Categories default data
+    if (!parsed.categories) {
+      parsed.categories = [];
+    }
+    DEFAULT_CATEGORIES.forEach(defaultCat => {
+      const existingCatIndex = parsed.categories.findIndex(c => c.id === defaultCat.id);
+      if (existingCatIndex === -1) {
+        parsed.categories.push(defaultCat);
+        updated = true;
+      } else {
+        const existing = parsed.categories[existingCatIndex];
+        if (existing.nameEn !== defaultCat.nameEn || existing.nameBn !== defaultCat.nameBn || existing.image !== defaultCat.image) {
+          parsed.categories[existingCatIndex] = { ...existing, ...defaultCat };
+          updated = true;
+        }
+      }
+    });
+
+    // 2. Sync Products default data
+    if (!parsed.products) {
+      parsed.products = [];
+    }
+    DEFAULT_PRODUCTS.forEach(defaultProd => {
+      const existingProdIndex = parsed.products.findIndex(p => p.id === defaultProd.id);
+      if (existingProdIndex === -1) {
+        parsed.products.push(defaultProd);
+        updated = true;
+      } else {
+        const existing = parsed.products[existingProdIndex];
+        let hasDiff = false;
+        const fieldsToSync = ["nameEn", "nameBn", "descriptionEn", "descriptionBn", "category", "costUSD", "priceUSD", "discountPercent"];
+        fieldsToSync.forEach(field => {
+          if (existing[field] !== defaultProd[field]) {
+            existing[field] = defaultProd[field];
+            hasDiff = true;
+          }
+        });
+        
+        // Sync arrays/objects
+        if (JSON.stringify(existing.images) !== JSON.stringify(defaultProd.images)) {
+          existing.images = defaultProd.images;
+          hasDiff = true;
+        }
+        if (JSON.stringify(existing.sizes) !== JSON.stringify(defaultProd.sizes)) {
+          existing.sizes = defaultProd.sizes;
+          hasDiff = true;
+        }
+        if (JSON.stringify(existing.colors) !== JSON.stringify(defaultProd.colors)) {
+          existing.colors = defaultProd.colors;
+          hasDiff = true;
+        }
+
+        if (hasDiff) {
+          parsed.products[existingProdIndex] = existing;
+          updated = true;
+        }
+      }
+    });
+
+    // 3. Sync Users default data
+    if (!parsed.users) {
+      parsed.users = [];
+    }
+    DEFAULT_USERS.forEach(defaultUser => {
+      const existingUserIndex = parsed.users.findIndex(u => u.email === defaultUser.email);
+      if (existingUserIndex === -1) {
+        parsed.users.push(defaultUser);
+        updated = true;
+      } else {
+        const existing = parsed.users[existingUserIndex];
+        let hasDiff = false;
+        const userFields = ["name", "phone", "address", "avatar", "password"];
+        userFields.forEach(field => {
+          if (existing[field] !== defaultUser[field]) {
+            existing[field] = defaultUser[field];
+            hasDiff = true;
+          }
+        });
+        if (hasDiff) {
+          parsed.users[existingUserIndex] = existing;
+          updated = true;
+        }
+      }
+    });
+
+    if (updated) {
+      saveDb(parsed);
+    }
+    return parsed;
   } catch (error) {
     console.error("Failed to read database file, returning default state", error);
     return DEFAULT_DB_STATE;

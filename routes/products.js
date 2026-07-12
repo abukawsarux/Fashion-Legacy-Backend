@@ -23,13 +23,14 @@ router.get("/:id", (req, res) => {
 router.post("/", (req, res) => {
   const { nameEn, nameBn, descriptionEn, descriptionBn, category, costUSD, priceUSD, discountPercent, images, sizes, colors, stock } = req.body;
   
-  if (!nameEn || !nameBn || !category || costUSD === undefined || priceUSD === undefined || stock === undefined) {
+  if (!nameEn || !nameBn || !category || (Array.isArray(category) && category.length === 0) || costUSD === undefined || priceUSD === undefined || stock === undefined) {
     return res.status(400).json({ error: "Missing required fields (nameEn, nameBn, category, costUSD, priceUSD, stock)." });
   }
 
   const db = getDb();
+  const primaryCat = Array.isArray(category) ? category[0] : category;
   const newProduct = {
-    id: `prod-${category.split("_")[1] || "gen"}-${Date.now().toString().slice(-4)}`,
+    id: `prod-${primaryCat.split("_")[1] || "gen"}-${Date.now().toString().slice(-4)}`,
     nameEn: nameEn.trim(),
     nameBn: nameBn.trim(),
     descriptionEn: (descriptionEn || "").trim(),
@@ -51,7 +52,7 @@ router.post("/", (req, res) => {
   db.logs.push({
     timestamp: new Date().toISOString(),
     action: "Product Created",
-    details: `Admin added product "${newProduct.nameEn}" under category "${category}" with stock ${stock}.`
+    details: `Admin added product "${newProduct.nameEn}" under category "${Array.isArray(category) ? category.join(", ") : category}" with stock ${stock}.`
   });
 
   saveDb(db);
