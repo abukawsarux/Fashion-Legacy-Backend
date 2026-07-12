@@ -93,6 +93,7 @@ app.get("/", (req, res) => {
   res.status(200).json({
     status: "healthy",
     message: "Fashion Legacy Express.js Backend is running.",
+    database: process.env.MONGODB_URI ? "MongoDB Atlas (Live)" : "Local JSON Fallback (Temporary - Will Reset)",
     timestamp: new Date().toISOString()
   });
 });
