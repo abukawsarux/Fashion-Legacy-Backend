@@ -107,10 +107,17 @@ async function seedCollectionIfEmpty(name, defaults) {
 }
 
 // Cache variables to prevent redundant MongoDB Atlas queries on parallel/rapid API requests
-let cachedDbPromise = null;
-let cacheTimestamp = 0;
+const cache = {
+  categories: { data: null, timestamp: 0 },
+  products: { data: null, timestamp: 0 },
+  orders: { data: null, timestamp: 0 },
+  traffic: { data: null, timestamp: 0 },
+  users: { data: null, timestamp: 0 },
+  logs: { data: null, timestamp: 0 },
+  meta: { data: null, timestamp: 0 }
+};
+const CACHE_TTL_MS = 10000; // Cache database collections independently for 10 seconds
 let lastKnownDb = null;
-const CACHE_TTL_MS = 2500; // Cache database promise for 2.5 seconds
 
 // ─── getDb — assembles a plain object from live MongoDB collections ──────────
 
@@ -120,53 +127,62 @@ async function getDb() {
   }
   
   const now = Date.now();
-  if (cachedDbPromise && (now - cacheTimestamp < CACHE_TTL_MS)) {
-    return cachedDbPromise;
-  }
+  
+  const collections = [
+    { name: "categories", query: () => mongoDb.collection("categories").find({}, { projection: { _id: 0 } }).toArray() },
+    { name: "products", query: () => mongoDb.collection("products").find({}, { projection: { _id: 0 } }).toArray() },
+    { name: "orders", query: () => mongoDb.collection("orders").find({}, { projection: { _id: 0 } }).toArray() },
+    { name: "traffic", query: () => mongoDb.collection("traffic").find({}, { projection: { _id: 0 } }).toArray() },
+    { name: "users", query: () => mongoDb.collection("users").find({}, { projection: { _id: 0 } }).toArray() },
+    { name: "logs", query: () => mongoDb.collection("logs").find({}, { projection: { _id: 0 } }).sort({ timestamp: -1 }).limit(100).toArray() }
+  ];
 
-  cachedDbPromise = (async () => {
-    try {
-      const [categories, products, orders, traffic, users, logs] = await Promise.all([
-        mongoDb.collection("categories").find({}, { projection: { _id: 0 } }).toArray(),
-        mongoDb.collection("products").find({}, { projection: { _id: 0 } }).toArray(),
-        mongoDb.collection("orders").find({}, { projection: { _id: 0 } }).toArray(),
-        mongoDb.collection("traffic").find({}, { projection: { _id: 0 } }).toArray(),
-        mongoDb.collection("users").find({}, { projection: { _id: 0 } }).toArray(),
-        mongoDb.collection("logs").find({}, { projection: { _id: 0 } }).sort({ timestamp: -1 }).limit(100).toArray()
-      ]);
-      const meta = await mongoDb.collection("meta").findOne({ _id: "settings" });
-      const dbState = {
-        categories,
-        products,
-        orders,
-        traffic,
-        users,
-        logs,
-        flashSaleEnd: meta ? meta.flashSaleEnd : null,
-        settings: meta ? meta.settings : {}
-      };
-      
-      // Store the last successfully fetched database state
-      lastKnownDb = dbState;
-      return dbState;
-    } catch (err) {
-      console.error("getDb error:", err);
-      // Invalidate the cache immediately on error
-      cachedDbPromise = null;
-      cacheTimestamp = 0;
-      
-      // If we have a last known successful DB state, fall back to it instead of local empty JSON database
-      if (lastKnownDb) {
-        console.warn("getDb: Falling back to last known in-memory database state.");
-        return lastKnownDb;
+  try {
+    const results = await Promise.all(collections.map(async col => {
+      if (cache[col.name] && cache[col.name].data !== null && (now - cache[col.name].timestamp < CACHE_TTL_MS)) {
+        return cache[col.name].data;
       }
-      
-      return getDbLocal();
-    }
-  })();
+      const data = await col.query();
+      cache[col.name] = { data, timestamp: now };
+      return data;
+    }));
 
-  cacheTimestamp = now;
-  return cachedDbPromise;
+    let meta;
+    if (cache.meta && cache.meta.data !== null && (now - cache.meta.timestamp < CACHE_TTL_MS)) {
+      meta = cache.meta.data;
+    } else {
+      meta = await mongoDb.collection("meta").findOne({ _id: "settings" });
+      cache.meta = { data: meta, timestamp: now };
+    }
+
+    const dbState = {
+      categories: results[0],
+      products: results[1],
+      orders: results[2],
+      traffic: results[3],
+      users: results[4],
+      logs: results[5],
+      flashSaleEnd: meta ? meta.flashSaleEnd : null,
+      settings: meta ? meta.settings : {}
+    };
+
+    lastKnownDb = dbState;
+    return dbState;
+  } catch (err) {
+    console.error("getDb error:", err);
+    
+    // Invalidate caches on query error so next request tries again
+    for (const key in cache) {
+      cache[key] = { data: null, timestamp: 0 };
+    }
+
+    if (lastKnownDb) {
+      console.warn("getDb: Falling back to last known in-memory database state.");
+      return lastKnownDb;
+    }
+    
+    return getDbLocal();
+  }
 }
 
 // ─── saveDb — writes changed data back to the correct MongoDB collection ─────
@@ -174,9 +190,37 @@ async function getDb() {
 // We diff against existing collections and apply targeted updates.
 
 async function saveDb(data) {
-  // Update the in-memory cache immediately to avoid any lag in subsequent reads
-  cachedDbPromise = Promise.resolve(data);
-  cacheTimestamp = Date.now();
+  const now = Date.now();
+  
+  // Immediately update/write-through to the cache so subsequent reads see the update
+  if (data.categories !== undefined) cache.categories = { data: data.categories, timestamp: now };
+  if (data.products !== undefined) cache.products = { data: data.products, timestamp: now };
+  if (data.orders !== undefined) cache.orders = { data: data.orders, timestamp: now };
+  if (data.traffic !== undefined) cache.traffic = { data: data.traffic, timestamp: now };
+  if (data.users !== undefined) cache.users = { data: data.users, timestamp: now };
+  if (data.logs !== undefined) cache.logs = { data: data.logs, timestamp: now };
+  if (data.flashSaleEnd !== undefined || data.settings !== undefined) {
+    cache.meta = {
+      data: {
+        _id: "settings",
+        flashSaleEnd: data.flashSaleEnd || null,
+        settings: data.settings || {}
+      },
+      timestamp: now
+    };
+  }
+
+  // Update lastKnownDb state
+  lastKnownDb = {
+    categories: cache.categories.data || [],
+    products: cache.products.data || [],
+    orders: cache.orders.data || [],
+    traffic: cache.traffic.data || [],
+    users: cache.users.data || [],
+    logs: cache.logs.data || [],
+    flashSaleEnd: cache.meta.data ? cache.meta.data.flashSaleEnd : null,
+    settings: cache.meta.data ? cache.meta.data.settings : {}
+  };
 
   if (!useMongo || !mongoDb) {
     return saveDbLocal(data);
