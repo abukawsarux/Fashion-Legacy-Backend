@@ -70,11 +70,11 @@ async function connectMongo() {
   try {
     console.log("Connecting to MongoDB Atlas...");
     mongoClient = new MongoClient(uri, {
-      maxPoolSize: 3,
-      minPoolSize: 1,
-      connectTimeoutMS: 8000,
+      maxPoolSize: 50,
+      minPoolSize: 5,
+      connectTimeoutMS: 10000,
       socketTimeoutMS: 45000,
-      serverSelectionTimeoutMS: 8000
+      serverSelectionTimeoutMS: 10000
     });
     await mongoClient.connect();
     mongoDb = mongoClient.db("fashion_legacy_db");
@@ -109,6 +109,7 @@ async function seedCollectionIfEmpty(name, defaults) {
 // Cache variables to prevent redundant MongoDB Atlas queries on parallel/rapid API requests
 let cachedDbPromise = null;
 let cacheTimestamp = 0;
+let lastKnownDb = null;
 const CACHE_TTL_MS = 2500; // Cache database promise for 2.5 seconds
 
 // ─── getDb — assembles a plain object from live MongoDB collections ──────────
@@ -134,7 +135,7 @@ async function getDb() {
         mongoDb.collection("logs").find({}, { projection: { _id: 0 } }).sort({ timestamp: -1 }).limit(100).toArray()
       ]);
       const meta = await mongoDb.collection("meta").findOne({ _id: "settings" });
-      return {
+      const dbState = {
         categories,
         products,
         orders,
@@ -144,11 +145,22 @@ async function getDb() {
         flashSaleEnd: meta ? meta.flashSaleEnd : null,
         settings: meta ? meta.settings : {}
       };
+      
+      // Store the last successfully fetched database state
+      lastKnownDb = dbState;
+      return dbState;
     } catch (err) {
       console.error("getDb error:", err);
       // Invalidate the cache immediately on error
       cachedDbPromise = null;
       cacheTimestamp = 0;
+      
+      // If we have a last known successful DB state, fall back to it instead of local empty JSON database
+      if (lastKnownDb) {
+        console.warn("getDb: Falling back to last known in-memory database state.");
+        return lastKnownDb;
+      }
+      
       return getDbLocal();
     }
   })();
