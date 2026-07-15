@@ -19,7 +19,8 @@ const DEFAULT_CATEGORIES = [
   { id: "cat_men",     nameEn: "Men's Fashion",    nameBn: "পুরুষদের ফ্যাশন",           image: "/images/categories/men.png" },
   { id: "cat_shoes",   nameEn: "Shoes",            nameBn: "জুতো",                      image: "/images/categories/shoes.png" },
   { id: "cat_watches", nameEn: "Watches & Acc.",   nameBn: "ঘড়ি ও অ্যাক্সেসরিজ",      image: "/images/categories/watches.png" },
-  { id: "cat_kids",    nameEn: "Kids & Toys",      nameBn: "বাচ্চাদের খেলনা ও পোশাক",  image: "/images/categories/kids.png" }
+  { id: "cat_kids",    nameEn: "Kids & Toys",      nameBn: "বাচ্চাদের খেলনা ও পোশাক",  image: "/images/categories/kids.png" },
+  { id: "cat_flash",   nameEn: "Flash Sale",       nameBn: "ফ্ল্যাশ সেল",                image: "/images/categories/hot.png" }
 ];
 
 const DEFAULT_TRAFFIC = [
