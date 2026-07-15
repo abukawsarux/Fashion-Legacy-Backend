@@ -8,6 +8,10 @@ const { getDb, saveDb } = require("../db");
 // Helper to save base64 image
 const saveBase64Image = (base64Str) => {
   if (!base64Str) return null;
+  // In Vercel or production serverless environments, store base64 in database
+  if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+    return base64Str;
+  }
   try {
     const matches = base64Str.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
     if (!matches || matches.length !== 3) return null;

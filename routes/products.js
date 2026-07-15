@@ -105,6 +105,12 @@ router.post("/upload", (req, res) => {
   const { image } = req.body;
   if (!image) return res.status(400).json({ error: "No image content provided." });
 
+  // In Vercel or production serverless environments, return the base64 string directly
+  // so it gets stored in the database instead of the ephemeral disk.
+  if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+    return res.status(200).json({ imageUrl: image });
+  }
+
   const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
   if (!matches || matches.length !== 3) return res.status(400).json({ error: "Invalid base64 image format." });
 
