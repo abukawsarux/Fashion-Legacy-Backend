@@ -172,25 +172,25 @@ async function saveDb(data) {
   try {
     const ops = [];
 
-    // categories — replace entire collection contents atomically
+    // categories — replace entire collection contents atomically and safely
     if (data.categories !== undefined) {
-      ops.push(replaceCollection("categories", data.categories));
+      ops.push(replaceCollectionSafe("categories", data.categories, "id"));
     }
-    // products — replace entire collection contents atomically
+    // products — replace entire collection contents atomically and safely
     if (data.products !== undefined) {
-      ops.push(replaceCollection("products", data.products));
+      ops.push(replaceCollectionSafe("products", data.products, "id"));
     }
     // orders
     if (data.orders !== undefined) {
-      ops.push(replaceCollection("orders", data.orders));
+      ops.push(replaceCollectionSafe("orders", data.orders, "id"));
     }
     // traffic
     if (data.traffic !== undefined) {
-      ops.push(replaceCollection("traffic", data.traffic));
+      ops.push(replaceCollectionSafe("traffic", data.traffic, "date"));
     }
     // users
     if (data.users !== undefined) {
-      ops.push(replaceCollection("users", data.users));
+      ops.push(replaceCollectionSafe("users", data.users, "email"));
     }
     // logs — just push new ones (don't rewrite all)
     if (data.logs && data.logs.length > 0) {
@@ -213,13 +213,24 @@ async function saveDb(data) {
   }
 }
 
-async function replaceCollection(name, items) {
+async function replaceCollectionSafe(name, items, keyField = "id") {
   const col = mongoDb.collection(name);
-  // Drop all docs and reinsert — atomic per-collection
-  await col.deleteMany({});
-  if (items && items.length > 0) {
-    await col.insertMany(items.map(d => ({ ...d })));
+  if (!items || items.length === 0) {
+    await col.deleteMany({});
+    return;
   }
+
+  // 1. Upsert all new/updated items
+  const upsertOps = items.map(item => col.updateOne(
+    { [keyField]: item[keyField] },
+    { $set: item },
+    { upsert: true }
+  ));
+  await Promise.all(upsertOps);
+
+  // 2. Delete any items not in the new list
+  const activeKeys = items.map(item => item[keyField]);
+  await col.deleteMany({ [keyField]: { $nin: activeKeys } });
 }
 
 // ─── Local JSON fallback (development only) ───────────────────────────────────
