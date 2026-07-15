@@ -106,36 +106,55 @@ async function seedCollectionIfEmpty(name, defaults) {
   }
 }
 
+// Cache variables to prevent redundant MongoDB Atlas queries on parallel/rapid API requests
+let cachedDbPromise = null;
+let cacheTimestamp = 0;
+const CACHE_TTL_MS = 2500; // Cache database promise for 2.5 seconds
+
 // ─── getDb — assembles a plain object from live MongoDB collections ──────────
 
 async function getDb() {
   if (!useMongo || !mongoDb) {
     return getDbLocal();
   }
-  try {
-    const [categories, products, orders, traffic, users, logs] = await Promise.all([
-      mongoDb.collection("categories").find({}, { projection: { _id: 0 } }).toArray(),
-      mongoDb.collection("products").find({}, { projection: { _id: 0 } }).toArray(),
-      mongoDb.collection("orders").find({}, { projection: { _id: 0 } }).toArray(),
-      mongoDb.collection("traffic").find({}, { projection: { _id: 0 } }).toArray(),
-      mongoDb.collection("users").find({}, { projection: { _id: 0 } }).toArray(),
-      mongoDb.collection("logs").find({}, { projection: { _id: 0 } }).sort({ timestamp: -1 }).limit(100).toArray()
-    ]);
-    const meta = await mongoDb.collection("meta").findOne({ _id: "settings" });
-    return {
-      categories,
-      products,
-      orders,
-      traffic,
-      users,
-      logs,
-      flashSaleEnd: meta ? meta.flashSaleEnd : null,
-      settings: meta ? meta.settings : {}
-    };
-  } catch (err) {
-    console.error("getDb error:", err);
-    return getDbLocal();
+  
+  const now = Date.now();
+  if (cachedDbPromise && (now - cacheTimestamp < CACHE_TTL_MS)) {
+    return cachedDbPromise;
   }
+
+  cachedDbPromise = (async () => {
+    try {
+      const [categories, products, orders, traffic, users, logs] = await Promise.all([
+        mongoDb.collection("categories").find({}, { projection: { _id: 0 } }).toArray(),
+        mongoDb.collection("products").find({}, { projection: { _id: 0 } }).toArray(),
+        mongoDb.collection("orders").find({}, { projection: { _id: 0 } }).toArray(),
+        mongoDb.collection("traffic").find({}, { projection: { _id: 0 } }).toArray(),
+        mongoDb.collection("users").find({}, { projection: { _id: 0 } }).toArray(),
+        mongoDb.collection("logs").find({}, { projection: { _id: 0 } }).sort({ timestamp: -1 }).limit(100).toArray()
+      ]);
+      const meta = await mongoDb.collection("meta").findOne({ _id: "settings" });
+      return {
+        categories,
+        products,
+        orders,
+        traffic,
+        users,
+        logs,
+        flashSaleEnd: meta ? meta.flashSaleEnd : null,
+        settings: meta ? meta.settings : {}
+      };
+    } catch (err) {
+      console.error("getDb error:", err);
+      // Invalidate the cache immediately on error
+      cachedDbPromise = null;
+      cacheTimestamp = 0;
+      return getDbLocal();
+    }
+  })();
+
+  cacheTimestamp = now;
+  return cachedDbPromise;
 }
 
 // ─── saveDb — writes changed data back to the correct MongoDB collection ─────
@@ -143,6 +162,10 @@ async function getDb() {
 // We diff against existing collections and apply targeted updates.
 
 async function saveDb(data) {
+  // Update the in-memory cache immediately to avoid any lag in subsequent reads
+  cachedDbPromise = Promise.resolve(data);
+  cacheTimestamp = Date.now();
+
   if (!useMongo || !mongoDb) {
     return saveDbLocal(data);
   }
