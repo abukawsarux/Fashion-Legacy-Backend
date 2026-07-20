@@ -2,9 +2,11 @@
 const express = require("express");
 const router = express.Router();
 const { getDb, saveDb } = require("../db");
+const { asyncHandler } = require("../middleware/error");
+const { generateOrderId } = require("../utils/ids");
 
 // Get overall dashboard stats
-router.get("/stats", async (req, res) => {
+router.get("/stats", asyncHandler(async (req, res) => {
   const db = await getDb();
 
   const orders = db.orders;
@@ -62,10 +64,10 @@ router.get("/stats", async (req, res) => {
     traffic,
     recentLogs: sortedLogs
   });
-});
+}));
 
 // Trigger a mock storefront purchase simulation
-router.post("/simulate", async (req, res) => {
+router.post("/simulate", asyncHandler(async (req, res) => {
   const db = await getDb();
   if (db.products.length === 0) {
     return res.status(400).json({ error: "Cannot simulate purchase. Product catalog is empty." });
@@ -85,7 +87,7 @@ router.post("/simulate", async (req, res) => {
   const costTotal = Number((randomProduct.costUSD * quantity).toFixed(2));
 
   const newOrder = {
-    id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
+    id: generateOrderId(db.orders),
     customerName: randomName,
     customerEmail: `${randomName.toLowerCase().replace(/\s/g, "")}@mock.com`,
     customerAddress: `${randomCity}, Bangladesh`,
@@ -114,8 +116,10 @@ router.post("/simulate", async (req, res) => {
 
   db.logs.push({ timestamp: new Date().toISOString(), action: "Simulation Triggered", details: `Customer simulation: ${randomName} purchased ${quantity}x "${randomProduct.nameEn}".` });
 
-  await saveDb(db);
+  const saved = await saveDb(db);
+  if (!saved) return res.status(500).json({ error: "Failed to save simulated order to database." });
+
   res.status(201).json({ message: "Purchase simulated successfully", order: newOrder });
-});
+}));
 
 module.exports = router;

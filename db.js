@@ -8,7 +8,8 @@ let mongoDb = null;
 let useMongo = false;
 
 const isVercel = process.env.VERCEL || process.env.NOW_BUILDER || process.env.NODE_ENV === "production";
-const dataDir = isVercel ? "/tmp" : path.join(__dirname, "data");
+// DATA_DIR override lets tests (and unusual deployments) point the JSON fallback elsewhere
+const dataDir = process.env.DATA_DIR || (isVercel ? "/tmp" : path.join(__dirname, "data"));
 const dbPath = path.join(dataDir, "db.json");
 
 // ─── Default seed data ───────────────────────────────────────────────────────
@@ -135,7 +136,9 @@ async function getDb() {
     { name: "orders", query: () => mongoDb.collection("orders").find({}, { projection: { _id: 0 } }).toArray() },
     { name: "traffic", query: () => mongoDb.collection("traffic").find({}, { projection: { _id: 0 } }).toArray() },
     { name: "users", query: () => mongoDb.collection("users").find({}, { projection: { _id: 0 } }).toArray() },
-    { name: "logs", query: () => mongoDb.collection("logs").find({}, { projection: { _id: 0 } }).sort({ timestamp: -1 }).limit(100).toArray() }
+    // Fetch the most recent 100, then flip to oldest-first — the canonical order
+    // for db.logs on BOTH backends (the local JSON file appends chronologically).
+    { name: "logs", query: () => mongoDb.collection("logs").find({}, { projection: { _id: 0 } }).sort({ timestamp: -1 }).limit(100).toArray().then(arr => arr.reverse()) }
   ];
 
   try {
@@ -168,7 +171,9 @@ async function getDb() {
     };
 
     lastKnownDb = dbState;
-    return dbState;
+    // Each request gets its own copy: handlers mutate the returned object in
+    // place, and a shared reference would pollute the cache even on failed saves.
+    return structuredClone(dbState);
   } catch (err) {
     console.error("getDb error:", err);
     
@@ -179,7 +184,7 @@ async function getDb() {
 
     if (lastKnownDb) {
       console.warn("getDb: Falling back to last known in-memory database state.");
-      return lastKnownDb;
+      return structuredClone(lastKnownDb);
     }
     
     return getDbLocal();
@@ -190,10 +195,12 @@ async function getDb() {
 // `data` is the full state object (as returned by getDb).
 // We diff against existing collections and apply targeted updates.
 
-async function saveDb(data) {
+// Write-through: expose freshly saved state to readers (cache + lastKnownDb).
+// Called only AFTER a successful persist, so a failed write never serves
+// phantom data from the cache.
+function commitToCache(data) {
   const now = Date.now();
-  
-  // Immediately update/write-through to the cache so subsequent reads see the update
+
   if (data.categories !== undefined) cache.categories = { data: data.categories, timestamp: now };
   if (data.products !== undefined) cache.products = { data: data.products, timestamp: now };
   if (data.orders !== undefined) cache.orders = { data: data.orders, timestamp: now };
@@ -211,7 +218,6 @@ async function saveDb(data) {
     };
   }
 
-  // Update lastKnownDb state
   lastKnownDb = {
     categories: cache.categories.data || [],
     products: cache.products.data || [],
@@ -222,9 +228,13 @@ async function saveDb(data) {
     flashSaleEnd: cache.meta.data ? cache.meta.data.flashSaleEnd : null,
     settings: cache.meta.data ? cache.meta.data.settings : {}
   };
+}
 
+async function saveDb(data) {
   if (!useMongo || !mongoDb) {
-    return saveDbLocal(data);
+    const ok = saveDbLocal(data);
+    if (ok) commitToCache(data);
+    return ok;
   }
   try {
     const ops = [];
@@ -262,6 +272,7 @@ async function saveDb(data) {
     ));
 
     await Promise.all(ops);
+    commitToCache(data);
     console.log("saveDb: all collections updated successfully.");
     return true;
   } catch (err) {
@@ -330,4 +341,10 @@ function saveDbLocal(data) {
   }
 }
 
-module.exports = { connectMongo, getDb, saveDb };
+// Actual runtime storage state — unlike env-var presence, this reflects whether
+// Mongo is really connected right now (it can be configured yet down).
+function getDbStatus() {
+  return { useMongo, mongoConfigured: !!process.env.MONGODB_URI };
+}
+
+module.exports = { connectMongo, getDb, saveDb, getDbStatus };

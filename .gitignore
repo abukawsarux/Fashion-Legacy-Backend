@@ -1,6 +1,14 @@
 # Dependency directories
 node_modules/
 
+# Local data & runtime artifacts (JSON-fallback DB, user uploads)
+data/
+public/uploads/
+
+# Test/coverage & deployment artifacts
+coverage/
+.vercel
+
 # Env files
 .env
 .env.local

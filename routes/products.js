@@ -2,33 +2,40 @@
 const express = require("express");
 const router = express.Router();
 const { getDb, saveDb } = require("../db");
+const { asyncHandler } = require("../middleware/error");
+const { stripNulls, validateProductPayload } = require("../utils/validate");
+const { generateProductId } = require("../utils/ids");
+const { saveBase64Image } = require("../utils/images");
 
 // Get all products
-router.get("/", async (req, res) => {
+router.get("/", asyncHandler(async (req, res) => {
   const db = await getDb();
   res.status(200).json(db.products);
-});
+}));
 
 // Get a single product
-router.get("/:id", async (req, res) => {
+router.get("/:id", asyncHandler(async (req, res) => {
   const db = await getDb();
   const product = db.products.find(p => p.id === req.params.id);
   if (!product) return res.status(404).json({ error: "Product not found." });
   res.status(200).json(product);
-});
+}));
 
 // Create a new product
-router.post("/", async (req, res) => {
+router.post("/", asyncHandler(async (req, res) => {
+  stripNulls(req.body);
   const { nameEn, nameBn, descriptionEn, descriptionBn, category, costUSD, priceUSD, discountPercent, images, sizes, colors, stock } = req.body;
 
   if (!nameEn || !nameBn || !category || (Array.isArray(category) && category.length === 0) || costUSD === undefined || priceUSD === undefined || stock === undefined) {
     return res.status(400).json({ error: "Missing required fields (nameEn, nameBn, category, costUSD, priceUSD, stock)." });
   }
+  const validationError = validateProductPayload(req.body);
+  if (validationError) return res.status(400).json({ error: validationError });
 
   const db = await getDb();
   const primaryCat = Array.isArray(category) ? category[0] : category;
   const newProduct = {
-    id: `prod-${primaryCat.split("_")[1] || "gen"}-${Date.now().toString().slice(-4)}`,
+    id: generateProductId(primaryCat.split("_")[1] || "gen", db.products),
     nameEn: nameEn.trim(),
     nameBn: nameBn.trim(),
     descriptionEn: (descriptionEn || "").trim(),
@@ -52,16 +59,19 @@ router.post("/", async (req, res) => {
   if (!saved) return res.status(500).json({ error: "Failed to save product to database." });
 
   res.status(201).json({ message: "Product created successfully", product: newProduct });
-});
+}));
 
 // Update a product
-router.put("/:id", async (req, res) => {
+router.put("/:id", asyncHandler(async (req, res) => {
   const db = await getDb();
   const productIndex = db.products.findIndex(p => p.id === req.params.id);
   if (productIndex === -1) return res.status(404).json({ error: "Product not found." });
 
+  const updates = stripNulls(req.body);
+  const validationError = validateProductPayload(updates);
+  if (validationError) return res.status(400).json({ error: validationError });
+
   const product = db.products[productIndex];
-  const updates = req.body;
   if (updates.nameEn !== undefined) product.nameEn = updates.nameEn.trim();
   if (updates.nameBn !== undefined) product.nameBn = updates.nameBn.trim();
   if (updates.descriptionEn !== undefined) product.descriptionEn = updates.descriptionEn.trim();
@@ -82,10 +92,10 @@ router.put("/:id", async (req, res) => {
   if (!saved) return res.status(500).json({ error: "Failed to save product to database." });
 
   res.status(200).json({ message: "Product updated successfully", product });
-});
+}));
 
 // Delete a product
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", asyncHandler(async (req, res) => {
   const db = await getDb();
   const productIndex = db.products.findIndex(p => p.id === req.params.id);
   if (productIndex === -1) return res.status(404).json({ error: "Product not found." });
@@ -98,44 +108,19 @@ router.delete("/:id", async (req, res) => {
   if (!saved) return res.status(500).json({ error: "Failed to save changes to database." });
 
   res.status(200).json({ message: "Product deleted successfully", id: req.params.id });
-});
+}));
 
-// Upload an image file (Base64)
+// Upload an image file (Base64). In Vercel/production the base64 string is
+// returned as-is (stored in the DB — disk is ephemeral); locally it is written
+// to public/uploads and a /uploads path is returned. See utils/images.js.
 router.post("/upload", (req, res) => {
   const { image } = req.body;
   if (!image) return res.status(400).json({ error: "No image content provided." });
+  if (typeof image !== "string") return res.status(400).json({ error: "Invalid base64 image format." });
 
-  // In Vercel or production serverless environments, return the base64 string directly
-  // so it gets stored in the database instead of the ephemeral disk.
-  if (process.env.VERCEL || process.env.NODE_ENV === "production") {
-    return res.status(200).json({ imageUrl: image });
-  }
-
-  const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-  if (!matches || matches.length !== 3) return res.status(400).json({ error: "Invalid base64 image format." });
-
-  const mimeType = matches[1];
-  const base64Data = matches[2];
-  const buffer = Buffer.from(base64Data, "base64");
-
-  let extension = "png";
-  if (mimeType === "image/jpeg" || mimeType === "image/jpg") extension = "jpg";
-  else if (mimeType === "image/webp") extension = "webp";
-  else if (mimeType === "image/gif") extension = "gif";
-
-  const fs = require("fs");
-  const path = require("path");
-  const uploadDir = path.join(__dirname, "../public/uploads");
-  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-  const filename = `product-${Date.now()}.${extension}`;
-  fs.writeFile(path.join(uploadDir, filename), buffer, (err) => {
-    if (err) {
-      console.warn("Failed to save uploaded file to disk:", err);
-      return res.status(200).json({ imageUrl: image });
-    }
-    res.status(200).json({ imageUrl: `/uploads/${filename}` });
-  });
+  const imageUrl = saveBase64Image(image, "product");
+  if (imageUrl === null) return res.status(400).json({ error: "Invalid base64 image format." });
+  res.status(200).json({ imageUrl });
 });
 
 module.exports = router;

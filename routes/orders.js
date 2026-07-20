@@ -2,48 +2,65 @@
 const express = require("express");
 const router = express.Router();
 const { getDb, saveDb } = require("../db");
+const { asyncHandler } = require("../middleware/error");
+const { stripNulls, validateOrderCreate } = require("../utils/validate");
+const { generateOrderId } = require("../utils/ids");
+const { SHIPPING_INSIDE_BDT, SHIPPING_OUTSIDE_BDT, BDT_PER_USD } = require("../config").constants;
 
 // Get all orders (for dashboard)
-router.get("/", async (req, res) => {
+router.get("/", asyncHandler(async (req, res) => {
   const db = await getDb();
   res.status(200).json(db.orders);
-});
+}));
 
 // Get user orders by email
-router.get("/user/:email", async (req, res) => {
+router.get("/user/:email", asyncHandler(async (req, res) => {
   const db = await getDb();
   const email = req.params.email.toLowerCase();
   const userOrders = db.orders.filter(o => o.customerEmail.toLowerCase() === email);
   res.status(200).json(userOrders);
-});
+}));
 
 // Place order (checkout)
-router.post("/", async (req, res) => {
+router.post("/", asyncHandler(async (req, res) => {
+  stripNulls(req.body);
   const { customerName, customerEmail, customerAddress, items, paymentMethod, shippingArea } = req.body;
   if (!customerName || !customerEmail || !customerAddress || !items || items.length === 0) {
     return res.status(400).json({ error: "Missing required checkout fields." });
   }
+  const validationError = validateOrderCreate(req.body);
+  if (validationError) return res.status(400).json({ error: validationError });
 
   const db = await getDb();
+
+  // Every cart line must reference a real product — the client must never get
+  // to price its own order (the old fallback used client-supplied priceUSD).
+  for (const item of items) {
+    if (!db.products.some(p => p.id === item.productId)) {
+      return res.status(400).json({ error: `Unknown product in cart: ${item.productId}` });
+    }
+  }
+
   let totalUSD = 0;
   let totalCostUSD = 0;
 
   const orderItems = items.map(item => {
     const dbProduct = db.products.find(p => p.id === item.productId);
-    const costPrice = dbProduct ? dbProduct.costUSD : (item.priceUSD * 0.5);
-    const sellPrice = dbProduct ? dbProduct.priceUSD : item.priceUSD;
-    if (dbProduct) dbProduct.stock = Math.max(0, dbProduct.stock - item.quantity);
-    totalUSD += sellPrice * item.quantity;
-    totalCostUSD += costPrice * item.quantity;
-    return { productId: item.productId, nameEn: item.nameEn, nameBn: item.nameBn || item.nameEn, priceUSD: sellPrice, quantity: item.quantity, size: item.size || "M", colorEn: item.colorEn || "Default" };
+    const quantity = Number(item.quantity);
+    const costPrice = dbProduct.costUSD;
+    const sellPrice = dbProduct.priceUSD;
+    dbProduct.stock = Math.max(0, dbProduct.stock - quantity);
+    totalUSD += sellPrice * quantity;
+    totalCostUSD += costPrice * quantity;
+    return { productId: item.productId, nameEn: item.nameEn, nameBn: item.nameBn || item.nameEn, priceUSD: sellPrice, quantity, size: item.size || "M", colorEn: item.colorEn || "Default" };
   });
 
-  const shippingCostUSD = shippingArea === "inside" ? 80 / 120 : 150 / 120;
+  const shippingCostUSD = (shippingArea === "inside" ? SHIPPING_INSIDE_BDT : SHIPPING_OUTSIDE_BDT) / BDT_PER_USD;
   totalUSD += shippingCostUSD;
   totalCostUSD += shippingCostUSD;
 
   const newOrder = {
-    id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
+    id: generateOrderId(db.orders),
     customerName: customerName.trim(),
     customerEmail: customerEmail.trim().toLowerCase(),
     customerAddress: customerAddress.trim(),
@@ -71,12 +88,14 @@ router.post("/", async (req, res) => {
 
   db.logs.push({ timestamp: new Date().toISOString(), action: "Order Placed", details: `Customer ${newOrder.customerName} placed order ${newOrder.id} for ৳${newOrder.totalUSD.toFixed(2)}.` });
 
-  await saveDb(db);
+  const saved = await saveDb(db);
+  if (!saved) return res.status(500).json({ error: "Failed to save order to database." });
+
   res.status(201).json({ message: "Order placed successfully", order: newOrder });
-});
+}));
 
 // Update order status
-router.put("/:id/status", async (req, res) => {
+router.put("/:id/status", asyncHandler(async (req, res) => {
   const { status } = req.body;
   if (!status || !["Pending", "Shipped", "Delivered"].includes(status)) {
     return res.status(400).json({ error: "Invalid status. Must be 'Pending', 'Shipped', or 'Delivered'." });
@@ -90,8 +109,10 @@ router.put("/:id/status", async (req, res) => {
   db.orders[orderIndex].status = status;
   db.logs.push({ timestamp: new Date().toISOString(), action: "Order Status Updated", details: `Order ${req.params.id} updated from ${oldStatus} to ${status}.` });
 
-  await saveDb(db);
+  const saved = await saveDb(db);
+  if (!saved) return res.status(500).json({ error: "Failed to save order status to database." });
+
   res.status(200).json({ message: "Order status updated successfully", order: db.orders[orderIndex] });
-});
+}));
 
 module.exports = router;
