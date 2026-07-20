@@ -66,11 +66,12 @@ app.use(async (req, res, next) => {
     await connectMongo();
     next();
   } catch (err) {
-    console.error("MongoDB middleware connection error:", err);
-    if (process.env.MONGODB_URI) {
+    console.error("MongoDB middleware connection error:", err.message);
+    if (process.env.NODE_ENV === "production" && process.env.MONGODB_URI) {
       res.status(500).json({ error: "Failed to connect to the database. Please try again." });
     } else {
-      next(); // fallback to local JSON database if not configured for Mongo
+      // In local development, fallback to local JSON database if MongoDB fails
+      next();
     }
   }
 });
@@ -117,14 +118,22 @@ app.get("/", (req, res) => {
 
 // Start Server listening (for local execution)
 if (process.env.NODE_ENV !== "production") {
-  connectMongo().then(() => {
-    app.listen(PORT, () => {
-      console.log(`===============================================`);
-      console.log(`Fashion Legacy Backend API Server running!`);
-      console.log(`Listening on address: http://localhost:${PORT}`);
-      console.log(`===============================================`);
+  connectMongo()
+    .catch(err => {
+      console.error(`===============================================`);
+      console.error(`WARNING: MongoDB Atlas connection failed.`);
+      console.error(`Error: ${err.message}`);
+      console.error(`Falling back to Local JSON Database.`);
+      console.error(`===============================================`);
+    })
+    .finally(() => {
+      app.listen(PORT, () => {
+        console.log(`===============================================`);
+        console.log(`Fashion Legacy Backend API Server running!`);
+        console.log(`Listening on address: http://localhost:${PORT}`);
+        console.log(`===============================================`);
+      });
     });
-  });
 }
 
 // Export app for Vercel serverless execution
