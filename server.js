@@ -41,6 +41,12 @@ app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps, curl, postman)
     if (!origin) return callback(null, true);
+    
+    // In local development, allow all origins
+    if (process.env.NODE_ENV !== "production") {
+      return callback(null, true);
+    }
+    
     if (allowedOrigins.indexOf(origin) !== -1 || isLocalOrigin(origin)) {
       return callback(null, true);
     }
@@ -67,12 +73,8 @@ app.use(async (req, res, next) => {
     next();
   } catch (err) {
     console.error("MongoDB middleware connection error:", err.message);
-    if (process.env.NODE_ENV === "production" && process.env.MONGODB_URI) {
-      res.status(500).json({ error: "Failed to connect to the database. Please try again." });
-    } else {
-      // In local development, fallback to local JSON database if MongoDB fails
-      next();
-    }
+    // Fallback to local JSON database if MongoDB fails
+    next();
   }
 });
 
