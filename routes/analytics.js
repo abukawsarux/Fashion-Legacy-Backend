@@ -118,4 +118,50 @@ router.post("/simulate", async (req, res) => {
   res.status(201).json({ message: "Purchase simulated successfully", order: newOrder });
 });
 
+// Record storefront visitor / pageview visit
+router.post("/track-visit", async (req, res) => {
+  try {
+    const { isNewVisitor } = req.body || {};
+    const db = await getDb();
+
+    if (!Array.isArray(db.traffic)) {
+      db.traffic = [];
+    }
+
+    const today = new Date();
+    const dateStr = today.toLocaleString("en-US", { day: "2-digit", month: "short" });
+    
+    let todayTraffic = db.traffic.find(t => t.date && t.date.toLowerCase() === dateStr.toLowerCase());
+
+    if (!todayTraffic) {
+      todayTraffic = {
+        date: dateStr,
+        visitors: isNewVisitor ? 1 : 0,
+        pageViews: 1,
+        conversions: 0
+      };
+      db.traffic.push(todayTraffic);
+      if (db.traffic.length > 7) {
+        db.traffic.shift();
+      }
+    } else {
+      todayTraffic.pageViews = (todayTraffic.pageViews || 0) + 1;
+      if (isNewVisitor) {
+        todayTraffic.visitors = (todayTraffic.visitors || 0) + 1;
+      }
+    }
+
+    await saveDb(db);
+
+    return res.status(200).json({
+      success: true,
+      message: "Visit recorded",
+      todayTraffic
+    });
+  } catch (error) {
+    console.error("Failed to track visit:", error);
+    return res.status(500).json({ error: "Failed to record visit" });
+  }
+});
+
 module.exports = router;

@@ -19,7 +19,7 @@ router.get("/:id", async (req, res) => {
 
 // Create a new product
 router.post("/", async (req, res) => {
-  const { nameEn, nameBn, descriptionEn, descriptionBn, category, costUSD, priceUSD, discountPercent, images, sizes, colors, stock } = req.body;
+  const { nameEn, nameBn, descriptionEn, descriptionBn, category, costUSD, priceUSD, discountPercent, discountAmount, badge, images, sizes, colors, stock } = req.body;
 
   if (!nameEn || !nameBn || !category || (Array.isArray(category) && category.length === 0) || costUSD === undefined || priceUSD === undefined || stock === undefined) {
     return res.status(400).json({ error: "Missing required fields (nameEn, nameBn, category, costUSD, priceUSD, stock)." });
@@ -37,6 +37,10 @@ router.post("/", async (req, res) => {
     costUSD: parseFloat(costUSD),
     priceUSD: parseFloat(priceUSD),
     discountPercent: parseInt(discountPercent) || 0,
+    discountAmount: parseFloat(discountAmount) || 0,
+    badge: (badge || "").trim(),
+    createdAt: new Date().toISOString(),
+    soldCount: 0,
     images: images && images.length > 0 ? images : ["/images/logo.png"],
     sizes: sizes || ["M"],
     colors: colors || [],
@@ -70,6 +74,9 @@ router.put("/:id", async (req, res) => {
   if (updates.costUSD !== undefined) product.costUSD = parseFloat(updates.costUSD);
   if (updates.priceUSD !== undefined) product.priceUSD = parseFloat(updates.priceUSD);
   if (updates.discountPercent !== undefined) product.discountPercent = parseInt(updates.discountPercent) || 0;
+  if (updates.discountAmount !== undefined) product.discountAmount = parseFloat(updates.discountAmount) || 0;
+  if (updates.badge !== undefined) product.badge = (updates.badge || "").trim();
+  if (updates.soldCount !== undefined) product.soldCount = parseInt(updates.soldCount) || 0;
   if (updates.images !== undefined) product.images = updates.images;
   if (updates.sizes !== undefined) product.sizes = updates.sizes;
   if (updates.colors !== undefined) product.colors = updates.colors;

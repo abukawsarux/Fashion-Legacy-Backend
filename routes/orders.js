@@ -94,4 +94,24 @@ router.put("/:id/status", async (req, res) => {
   res.status(200).json({ message: "Order status updated successfully", order: db.orders[orderIndex] });
 });
 
+// Delete an order
+router.delete("/:id", async (req, res) => {
+  const db = await getDb();
+  const orderIndex = db.orders.findIndex(o => o.id === req.params.id);
+  if (orderIndex === -1) {
+    return res.status(404).json({ error: "Order not found." });
+  }
+
+  const deletedOrder = db.orders[orderIndex];
+  db.orders.splice(orderIndex, 1);
+  db.logs.push({
+    timestamp: new Date().toISOString(),
+    action: "Order Deleted",
+    details: `Order ${deletedOrder.id} for ${deletedOrder.customerName} was deleted from dashboard.`
+  });
+
+  await saveDb(db);
+  res.status(200).json({ message: "Order deleted successfully", id: req.params.id });
+});
+
 module.exports = router;
