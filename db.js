@@ -14,13 +14,17 @@ const dbPath = path.join(dataDir, "db.json");
 // ─── Default seed data ───────────────────────────────────────────────────────
 
 const DEFAULT_CATEGORIES = [
-  { id: "cat_hot",     nameEn: "Hot Sale",        nameBn: "হট সেল",                    image: "/images/categories/hot.png" },
-  { id: "cat_women",   nameEn: "Women's Fashion",  nameBn: "মহিলাদের ফ্যাশন",           image: "/images/categories/women.png" },
-  { id: "cat_men",     nameEn: "Men's Fashion",    nameBn: "পুরুষদের ফ্যাশন",           image: "/images/categories/men.png" },
-  { id: "cat_shoes",   nameEn: "Shoes",            nameBn: "জুতো",                      image: "/images/categories/shoes.png" },
-  { id: "cat_watches", nameEn: "Watches & Acc.",   nameBn: "ঘড়ি ও অ্যাক্সেসরিজ",      image: "/images/categories/watches.png" },
-  { id: "cat_kids",    nameEn: "Kids & Toys",      nameBn: "বাচ্চাদের খেলনা ও পোশাক",  image: "/images/categories/kids.png" },
-  { id: "cat_flash",   nameEn: "Flash Sale",       nameBn: "ফ্ল্যাশ সেল",                image: "/images/categories/hot.png" }
+  { id: "cat_hot",         nameEn: "Hot Sale",                 nameBn: "হট সেল",                     image: "/images/categories/hot.png" },
+  { id: "cat_women",       nameEn: "Women's Fashion",          nameBn: "মহিলাদের ফ্যাশন",            image: "/images/categories/women.png" },
+  { id: "cat_shoes",       nameEn: "Shoes",                    nameBn: "জুতো",                       image: "/images/categories/shoes.png" },
+  { id: "cat_kids",        nameEn: "Kids & Toys",              nameBn: "বাচ্চাদের খেলনা ও পোশাক",   image: "/images/categories/kids.png" },
+  { id: "cat_watches",     nameEn: "Watches & Acc.",           nameBn: "ঘড়ি ও অ্যাক্সেসরিজ",       image: "/images/categories/watches.png" },
+  { id: "cat_home",        nameEn: "Home & Living",            nameBn: "হোম ও লিভিং",               image: "/images/categories/home.png" },
+  { id: "cat_bags",        nameEn: "Bags & Luggage",           nameBn: "ব্যাগ ও লাগেজের কালেকশন",    image: "/images/categories/bags.png" },
+  { id: "cat_electronics", nameEn: "Electronics & Gadgets",    nameBn: "ইলেকট্রনিক্স ও গ্যাজেটস",    image: "/images/categories/electronics.png" },
+  { id: "cat_men",         nameEn: "Men's Fashion",            nameBn: "পুরুষদের ফ্যাশন",            image: "/images/categories/men.png" },
+  { id: "cat_stationery",  nameEn: "Stationery & Office",      nameBn: "স্টেশনারি ও অফিস",          image: "/images/categories/stationery.png" },
+  { id: "cat_automotive",  nameEn: "Automotive & Accessories", nameBn: "অটোমোটিভ ও এক্সেসরিজ",        image: "/images/categories/automotive.png" }
 ];
 
 const DEFAULT_TRAFFIC = [
@@ -115,9 +119,10 @@ const cache = {
   traffic: { data: null, timestamp: 0 },
   users: { data: null, timestamp: 0 },
   logs: { data: null, timestamp: 0 },
+  adminUsers: { data: null, timestamp: 0 },
   meta: { data: null, timestamp: 0 }
 };
-const CACHE_TTL_MS = 10000; // Cache database collections independently for 10 seconds
+const CACHE_TTL_MS = 60000; // Fast in-memory cache TTL for instant 0ms responses
 let lastKnownDb = null;
 
 // ─── getDb — assembles a plain object from live MongoDB collections ──────────
@@ -135,7 +140,8 @@ async function getDb() {
     { name: "orders", query: () => mongoDb.collection("orders").find({}, { projection: { _id: 0 } }).toArray() },
     { name: "traffic", query: () => mongoDb.collection("traffic").find({}, { projection: { _id: 0 } }).toArray() },
     { name: "users", query: () => mongoDb.collection("users").find({}, { projection: { _id: 0 } }).toArray() },
-    { name: "logs", query: () => mongoDb.collection("logs").find({}, { projection: { _id: 0 } }).sort({ timestamp: -1 }).limit(100).toArray() }
+    { name: "logs", query: () => mongoDb.collection("logs").find({}, { projection: { _id: 0 } }).sort({ timestamp: -1 }).limit(100).toArray() },
+    { name: "adminUsers", query: () => mongoDb.collection("adminUsers").find({}, { projection: { _id: 0 } }).toArray() }
   ];
 
   try {
@@ -163,6 +169,7 @@ async function getDb() {
       traffic: results[3],
       users: results[4],
       logs: results[5],
+      adminUsers: results[6],
       flashSaleEnd: meta ? meta.flashSaleEnd : null,
       settings: meta ? meta.settings : {}
     };
@@ -200,6 +207,7 @@ async function saveDb(data) {
   if (data.traffic !== undefined) cache.traffic = { data: data.traffic, timestamp: now };
   if (data.users !== undefined) cache.users = { data: data.users, timestamp: now };
   if (data.logs !== undefined) cache.logs = { data: data.logs, timestamp: now };
+  if (data.adminUsers !== undefined) cache.adminUsers = { data: data.adminUsers, timestamp: now };
   if (data.flashSaleEnd !== undefined || data.settings !== undefined) {
     cache.meta = {
       data: {
@@ -219,6 +227,7 @@ async function saveDb(data) {
     traffic: cache.traffic.data || [],
     users: cache.users.data || [],
     logs: cache.logs.data || [],
+    adminUsers: cache.adminUsers.data || [],
     flashSaleEnd: cache.meta.data ? cache.meta.data.flashSaleEnd : null,
     settings: cache.meta.data ? cache.meta.data.settings : {}
   };
@@ -246,6 +255,13 @@ async function saveDb(data) {
       ops.push(replaceCollectionSafe("traffic", data.traffic, "date"));
     }
     // users
+    if (data.users !== undefined) {
+      ops.push(replaceCollectionSafe("users", data.users, "email"));
+    }
+    // adminUsers
+    if (data.adminUsers !== undefined) {
+      ops.push(replaceCollectionSafe("adminUsers", data.adminUsers, "id"));
+    }
     if (data.users !== undefined) {
       ops.push(replaceCollectionSafe("users", data.users, "email"));
     }

@@ -108,6 +108,44 @@ app.post("/api/flash-sale", async (req, res) => {
   res.status(200).json({ message: "Flash sale countdown updated successfully", flashSaleEnd });
 });
 
+// Shipping Charges Settings API
+const DEFAULT_SHIPPING_CONFIG = {
+  insideDhakaFee: 80,
+  outsideDhakaFee: 120,
+  freeShippingThreshold: 0,
+  estimatedDaysInside: "1-2 Days",
+  estimatedDaysOutside: "3-5 Days"
+};
+
+app.get("/api/settings/shipping", async (req, res) => {
+  const db = await getDb();
+  const config = (db.settings && db.settings.shippingConfig) ? db.settings.shippingConfig : DEFAULT_SHIPPING_CONFIG;
+  res.status(200).json(config);
+});
+
+app.post("/api/settings/shipping", async (req, res) => {
+  const { insideDhakaFee, outsideDhakaFee, freeShippingThreshold, estimatedDaysInside, estimatedDaysOutside } = req.body;
+  const db = await getDb();
+  if (!db.settings) db.settings = {};
+
+  db.settings.shippingConfig = {
+    insideDhakaFee: insideDhakaFee !== undefined ? Number(insideDhakaFee) : 60,
+    outsideDhakaFee: outsideDhakaFee !== undefined ? Number(outsideDhakaFee) : 120,
+    freeShippingThreshold: freeShippingThreshold !== undefined ? Number(freeShippingThreshold) : 0,
+    estimatedDaysInside: estimatedDaysInside || "1-2 Days",
+    estimatedDaysOutside: estimatedDaysOutside || "3-5 Days"
+  };
+
+  db.logs.push({
+    timestamp: new Date().toISOString(),
+    action: "Shipping Charges Updated",
+    details: `Updated shipping rates: Inside Dhaka ৳${db.settings.shippingConfig.insideDhakaFee}, Outside Dhaka ৳${db.settings.shippingConfig.outsideDhakaFee}`
+  });
+
+  await saveDb(db);
+  res.status(200).json({ message: "Shipping settings updated successfully", shippingConfig: db.settings.shippingConfig });
+});
+
 // Health check root route
 app.get("/", (req, res) => {
   res.status(200).json({
