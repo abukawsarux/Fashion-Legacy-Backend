@@ -19,7 +19,7 @@ router.get("/:id", async (req, res) => {
 
 // Create a new product
 router.post("/", async (req, res) => {
-  const { nameEn, nameBn, descriptionEn, descriptionBn, category, costUSD, priceUSD, discountPercent, discountAmount, badge, images, sizes, colors, stock } = req.body;
+  const { nameEn, nameBn, descriptionEn, descriptionBn, category, costUSD, priceUSD, discountPercent, discountAmount, badge, images, sizes, colors, stock, video } = req.body;
 
   if (!nameEn || !nameBn || !category || (Array.isArray(category) && category.length === 0) || costUSD === undefined || priceUSD === undefined || stock === undefined) {
     return res.status(400).json({ error: "Missing required fields (nameEn, nameBn, category, costUSD, priceUSD, stock)." });
@@ -46,7 +46,8 @@ router.post("/", async (req, res) => {
     colors: colors || [],
     rating: 5.0,
     reviewsCount: 0,
-    stock: parseInt(stock) || 0
+    stock: parseInt(stock) || 0,
+    video: video ? video.trim() : undefined
   };
 
   db.products.unshift(newProduct);
@@ -81,6 +82,7 @@ router.put("/:id", async (req, res) => {
   if (updates.sizes !== undefined) product.sizes = updates.sizes;
   if (updates.colors !== undefined) product.colors = updates.colors;
   if (updates.stock !== undefined) product.stock = parseInt(updates.stock) || 0;
+  if (updates.video !== undefined) product.video = updates.video ? updates.video.trim() : undefined;
 
   db.products[productIndex] = product;
   db.logs.push({ timestamp: new Date().toISOString(), action: "Product Updated", details: `Admin updated product "${product.nameEn}" (ID: ${product.id}).` });
@@ -142,6 +144,46 @@ router.post("/upload", (req, res) => {
       return res.status(200).json({ imageUrl: image });
     }
     res.status(200).json({ imageUrl: `/uploads/${filename}` });
+  });
+});
+
+// Upload a video file (Base64 or URL)
+router.post("/upload-video", (req, res) => {
+  const { video } = req.body;
+  if (!video) return res.status(400).json({ error: "No video content provided." });
+
+  if (video.startsWith("http://") || video.startsWith("https://") || video.startsWith("/videos/")) {
+    return res.status(200).json({ videoUrl: video });
+  }
+
+  if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+    return res.status(200).json({ videoUrl: video });
+  }
+
+  const matches = video.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+  if (!matches || matches.length !== 3) {
+    return res.status(200).json({ videoUrl: video });
+  }
+
+  const mimeType = matches[1];
+  const base64Data = matches[2];
+  const buffer = Buffer.from(base64Data, "base64");
+
+  let extension = "mp4";
+  if (mimeType.includes("webm")) extension = "webm";
+
+  const fs = require("fs");
+  const path = require("path");
+  const uploadDir = path.join(__dirname, "../public/uploads");
+  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+  const filename = `hover-video-${Date.now()}.${extension}`;
+  fs.writeFile(path.join(uploadDir, filename), buffer, (err) => {
+    if (err) {
+      console.warn("Failed to save video file to disk:", err);
+      return res.status(200).json({ videoUrl: video });
+    }
+    res.status(200).json({ videoUrl: `/uploads/${filename}` });
   });
 });
 

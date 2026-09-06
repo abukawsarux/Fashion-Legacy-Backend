@@ -92,6 +92,10 @@ async function connectMongo() {
     await seedCollectionIfEmpty("users", DEFAULT_USERS);
     // products, orders, logs start empty — only user adds them
 
+    // Ensure all 11 default categories are synced to DB
+    await syncDefaultCategoriesMongo();
+    cache.categories = { data: null, timestamp: 0 };
+
     const catCount = await mongoDb.collection("categories").countDocuments();
     const prodCount = await mongoDb.collection("products").countDocuments();
     console.log(`DB ready: ${catCount} categories, ${prodCount} products.`);
@@ -108,6 +112,18 @@ async function seedCollectionIfEmpty(name, defaults) {
   if (count === 0) {
     await col.insertMany(defaults.map(d => ({ ...d })));
     console.log(`Seeded '${name}' with ${defaults.length} default records.`);
+  }
+}
+
+async function syncDefaultCategoriesMongo() {
+  if (!useMongo || !mongoDb) return;
+  try {
+    const col = mongoDb.collection("categories");
+    for (const cat of DEFAULT_CATEGORIES) {
+      await col.updateOne({ id: cat.id }, { $setOnInsert: cat }, { upsert: true });
+    }
+  } catch (e) {
+    console.warn("Failed to sync default categories to Mongo:", e);
   }
 }
 

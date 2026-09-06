@@ -207,28 +207,58 @@
       "image": "/images/categories/women.png"
     },
     {
+      "id": "cat_shoes",
+      "nameEn": "Shoes Collection",
+      "nameBn": "জুতো কালেকশন",
+      "image": "/images/categories/shoes.png"
+    },
+    {
+      "id": "cat_kids",
+      "nameEn": "Kids & Toys",
+      "nameBn": "কিডস ও খেলনা",
+      "image": "/images/categories/kids.png"
+    },
+    {
+      "id": "cat_watches",
+      "nameEn": "Watches & Acc.",
+      "nameBn": "ঘড়ি ও এক্সেসরিজ",
+      "image": "/images/categories/watches.png"
+    },
+    {
+      "id": "cat_home",
+      "nameEn": "Home & Living",
+      "nameBn": "হোম ও লিভিং",
+      "image": "/images/categories/home.png"
+    },
+    {
+      "id": "cat_bags",
+      "nameEn": "Bags & Luggage",
+      "nameBn": "ব্যাগ কালেকশন",
+      "image": "/images/categories/bags.png"
+    },
+    {
+      "id": "cat_electronics",
+      "nameEn": "Electronics & Gadgets",
+      "nameBn": "ইলেকট্রনিক্স ও গ্যাজেটস",
+      "image": "/images/categories/electronics.png"
+    },
+    {
       "id": "cat_men",
       "nameEn": "Men's Fashion",
       "nameBn": "পুরুষদের ফ্যাশন",
       "image": "/images/categories/men.png"
     },
     {
-      "id": "cat_shoes",
-      "nameEn": "Shoes",
-      "nameBn": "জুতো",
-      "image": "/images/categories/shoes.png"
+      "id": "cat_stationery",
+      "nameEn": "Stationery & Office",
+      "nameBn": "স্টেশনারি ও অফিস",
+      "image": "/images/categories/stationery.png"
     },
     {
-      "id": "cat_watches",
-      "nameEn": "Watches & Acc.",
-      "nameBn": "ঘড়ি ও অ্যাক্সেসরিজ",
-      "image": "/images/categories/watches.png"
-    },
-    {
-      "id": "cat_kids",
-      "nameEn": "Kids & Toys",
-      "nameBn": "বাচ্চাদের খেলনা ও পোশাক",
-      "image": "/images/categories/kids.png"
+      "id": "cat_automotive",
+      "nameEn": "Automotive & Accessories",
+      "nameBn": "অটোমোটিভ ও এক্সেসরিজ",
+      "image": "/images/categories/automotive.png"
     }
   ]
 }
